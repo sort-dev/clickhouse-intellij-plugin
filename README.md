@@ -15,6 +15,11 @@ letting the consumer supply its own DBMS. The registry also needs `ClickHouseSQL
 and `CLICKHOUSE_BRIKK` alongside the stock ClickHouse identities, so shared
 datasource resolution recognizes both. No local substitutes are included.
 
+The boundary corpus records two stock CHouse failures: a comment between an
+INSERT's PARTITION BY and SELECT splits it; JSONEachRow data consumes a subsequent
+statement. Core's script ranges pass the corpus. Custom PSI and console boundaries
+remain unverified until the shared ClickHouse family adapter is available.
+
 Planned defaults: DBMS `CLICKHOUSE_BRIKK`, language `ClickHouseSQL`, display
 `ClickHouse (sort.dev)`, stock `CLICKHOUSE` extension fallback. Function insertion
 keeps catalog case; keywords use UPPER. ClickHouse PIPE is opt-in, permits SELECT
