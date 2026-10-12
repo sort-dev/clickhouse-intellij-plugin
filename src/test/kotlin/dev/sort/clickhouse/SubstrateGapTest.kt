@@ -6,12 +6,11 @@ import com.intellij.sql.dialects.clickhouse.CHouseLexer
 import com.intellij.sql.dialects.clickhouse.CHouseParser
 import com.intellij.sql.dialects.clickhouse.CHouseParserDefinition
 import com.intellij.sql.psi.SqlCompositeElementTypes
-import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import dev.brikk.house.sql.intellij.parser.parseLenientStatement
 import dev.brikk.house.sql.intellij.parser.wordAt
 import kotlin.test.assertFailsWith
 
-class SubstrateGapTest : BasePlatformTestCase() {
+class SubstrateGapTest : ClickHousePlatformTestCase() {
     fun testKnownStockFactoryGapForSharedLenientStatements() {
         val sql = boundaryCorpus.first { it.name == "multiline insert with comments" }.sql
         val builder = PsiBuilderFactory.getInstance().createBuilder(CHouseParserDefinition(), CHouseLexer(), sql)

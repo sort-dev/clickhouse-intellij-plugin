@@ -5,11 +5,10 @@ import com.intellij.psi.PsiManager
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.sql.dialects.clickhouse.CHouseDialect
 import com.intellij.sql.psi.SqlStatement
-import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import dev.brikk.house.sql.intellij.testing.setSqlDialectMapping
 import dev.brikk.house.sql.parser.SqlScriptSnapshot
 
-class StockBoundaryTest : BasePlatformTestCase() {
+class StockBoundaryTest : ClickHousePlatformTestCase() {
     fun testCoreBoundariesMatchCorpus() {
         for (case in boundaryCorpus) {
             val snapshot = SqlScriptSnapshot.parse(case.sql, "clickhouse")
