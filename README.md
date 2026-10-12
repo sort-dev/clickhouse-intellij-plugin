@@ -20,8 +20,9 @@ when creating their PSI. A `StatementBoundedSqlLexer(baseFactory: () -> Lexer,
 coreDialect: String)` or equivalent hook must bound raw FORMAT tokens using core
 script ranges, so they cannot include subsequent statements.
 
-The boundary corpus records two stock CHouse failures: a comment between an
-INSERT's PARTITION BY and SELECT splits it; JSONEachRow data consumes a subsequent
+The boundary corpus records stock CHouse failures: the owner's multiline s3
+INSERT splits before SELECT even without a comment; a comment between PARTITION
+BY and SELECT also splits an INSERT; JSONEachRow data consumes a subsequent
 statement. Core's script ranges pass the corpus. Custom PSI and console boundaries
 remain unverified until the shared ClickHouse family adapter is available.
 

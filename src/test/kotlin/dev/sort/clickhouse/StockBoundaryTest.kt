@@ -35,6 +35,10 @@ class StockBoundaryTest : ClickHousePlatformTestCase() {
                     .filter { PsiTreeUtil.getParentOfType(it, SqlStatement::class.java) == null }
                 val stock = statements.map { it.text }
                 val expected = when (case.name) {
+                    "owner multiline partitioned s3 insert" -> listOf(
+                        case.sql.substringBefore("\nSELECT *"),
+                        case.sql.substring(case.sql.indexOf("SELECT *")).removeSuffix(";"),
+                    )
                     // Stock loses the INSERT's SELECT when this comment separates the clauses.
                     "multiline insert with comments" -> listOf(
                         case.sql.substringBefore("\n/* SELECT").trimEnd(),
@@ -46,12 +50,13 @@ class StockBoundaryTest : ClickHousePlatformTestCase() {
                 }
                 if (stock != expected) {
                     add("${case.name}:\nexpected=$expected\nstock=$stock")
-                }
-                var from = 0
-                for ((part, statement) in expected.zip(statements)) {
-                    val start = case.sql.indexOf(part, from)
-                    assertEquals(case.name, TextRange(start, start + part.length), statement.textRange)
-                    from = start + part.length
+                } else {
+                    var from = 0
+                    for ((part, statement) in expected.zip(statements)) {
+                        val start = case.sql.indexOf(part, from)
+                        assertEquals(case.name, TextRange(start, start + part.length), statement.textRange)
+                        from = start + part.length
+                    }
                 }
             }
         }

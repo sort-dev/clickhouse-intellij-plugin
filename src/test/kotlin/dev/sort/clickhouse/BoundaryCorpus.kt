@@ -6,6 +6,32 @@ internal data class BoundaryCase(val name: String, val statements: List<String>)
 
 internal val boundaryCorpus = listOf(
     BoundaryCase(
+        "owner multiline partitioned s3 insert",
+        listOf(
+            """
+            INSERT INTO FUNCTION s3(
+                    'https://objects.example.invalid/1a2b3c4d5e6f:bucket-name/archive/events/{_partition_id}/node-1-data.parquet',
+                    'ACCESSKEYEXAMPLE', 'SECRETKEYEXAMPLE', 'Parquet'
+                                 )
+                PARTITION BY concat(
+                'year=',  toString(toYear(toDateTime(inserted_at))), '/',
+                'month=', toString(toMonth(toDateTime(inserted_at))), '/',
+                'day=',   toString(toDayOfMonth(toDateTime(inserted_at)))
+                )
+            SELECT *
+            FROM db.events_export_view
+            WHERE (event_ts >= toDate('2026-01-01')
+                AND event_ts < toDate('2026-01-02'))
+                SETTINGS
+                max_memory_usage = 512000000000,
+                max_threads = 4,
+                s3_truncate_on_insert = 0,
+                output_format_parquet_compression_method = 'zstd',
+                output_format_parquet_parallel_encoding = 1;
+            """.trimIndent(),
+        ),
+    ),
+    BoundaryCase(
         "partitioned s3 insert",
         listOf(
             "INSERT INTO FUNCTION s3('https://example.invalid/archive/{_partition_id}/events.parquet', 'Parquet') " +
