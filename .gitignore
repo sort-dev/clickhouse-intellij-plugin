@@ -1,0 +1,8 @@
+.gradle/
+.intellijPlatform/
+.idea/
+build/
+build-logic/.gradle/
+build-logic/build/
+local.properties
+*.iml

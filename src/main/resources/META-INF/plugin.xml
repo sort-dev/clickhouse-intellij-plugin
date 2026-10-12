@@ -1,0 +1,11 @@
+<idea-plugin>
+    <id>dev.sort.clickhouse-intellij-plugin</id>
+    <name>SQL Dialect for ClickHouse</name>
+    <vendor url="https://sort.dev" email="jayson@sort.dev">Sortdev SRL</vendor>
+    <description><![CDATA[
+        <p>ClickHouse SQL editing built on the Brikk SQL shared libraries.</p>
+        <p>Development scaffold. Custom dialect and PIPE integration are not enabled yet.</p>
+    ]]></description>
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.database</depends>
+</idea-plugin>
