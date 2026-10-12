@@ -14,11 +14,27 @@ ClickHouse tokens, builtin special forms, operators and system variables while
 letting the consumer supply its own DBMS. The registry also needs `ClickHouseSQL`
 and `CLICKHOUSE_BRIKK` alongside the stock ClickHouse identities, so shared
 datasource resolution recognizes both. No local substitutes are included.
+A `CHouseFamilyParserDefinition(dialect: SqlLanguageDialectBase)` must support shared
+lenient SQL_STATEMENT nodes: stock's package-private CHouseElementFactory throws
+when creating their PSI. A `StatementBoundedSqlLexer(baseFactory: () -> Lexer,
+coreDialect: String)` or equivalent hook must bound raw FORMAT tokens using core
+script ranges, so they cannot include subsequent statements.
 
 The boundary corpus records two stock CHouse failures: a comment between an
 INSERT's PARTITION BY and SELECT splits it; JSONEachRow data consumes a subsequent
 statement. Core's script ranges pass the corpus. Custom PSI and console boundaries
 remain unverified until the shared ClickHouse family adapter is available.
+
+PIPE also needs core `ParamStyle.NAMED_TYPED` for `{name:Type}` occurrences and
+shared parameter handling that excludes those from IDE `:name` prompting/masking.
+Today core marks both spellings NAMED_COLON, so the shared PIPE defaults conflate
+them. Typed parameters must stay unchanged for ClickHouse; `:name` must use IDE
+substitution before lowering. No execution integration is enabled with this gap.
+
+Core PIPE probes cover every advertised stage phrase. PIVOT/UNPIVOT return
+blockers; NATURAL JOIN is advertised but refused. Other fixtures lower and reparse
+in core, including SELECT-first and nested-only queries. This is not native
+validation or proof that arbitrary CALL table functions exist on a server.
 
 Planned defaults: DBMS `CLICKHOUSE_BRIKK`, language `ClickHouseSQL`, display
 `ClickHouse (sort.dev)`, stock `CLICKHOUSE` extension fallback. Function insertion
