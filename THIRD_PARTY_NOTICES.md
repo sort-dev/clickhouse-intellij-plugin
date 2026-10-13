@@ -11,6 +11,9 @@ This plugin embeds the following Apache License 2.0 libraries:
   https://github.com/brikk-house/brikk-sql
 - `brikk-sql-verify-clickhouse:0.20.0-SNAPSHOT`, Copyright Brikk / Sortdev SRL.
   https://github.com/brikk-house/brikk-sql
+- `brikk-engine-kotlin-intellij-support:0.3.0-SNAPSHOT`, Copyright Brikk / Sortdev SRL,
+  Apache License 2.0, not the Business Source License of its parent repository.
+  https://github.com/brikk-house/brikk-house
 
 Brikk SQL includes a Kotlin port of SQLGlot and portions derived from polyglot
 and DuckDB, licensed under MIT:

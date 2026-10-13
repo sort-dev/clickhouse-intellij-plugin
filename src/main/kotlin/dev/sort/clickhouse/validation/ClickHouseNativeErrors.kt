@@ -2,6 +2,7 @@ package dev.sort.clickhouse.validation
 
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiFile
+import com.intellij.lang.Language
 import dev.brikk.house.sql.diagnostics.localParseDiagnostics
 import dev.brikk.house.sql.dialects.Dialects
 import dev.brikk.house.sql.generator.UnsupportedError
@@ -23,6 +24,7 @@ import dev.brikk.house.sql.verify.ParseOnlyClickhouseVerifier
 import dev.sort.clickhouse.ClickHouseDbms
 import dev.sort.clickhouse.pipe.ClickHousePipeDialect
 import dev.sort.clickhouse.sql.ClickHouseDialect
+import dev.sort.clickhouse.brikk.ClickHouseHostSql
 
 object ClickHouseNativeErrorProfile : NativeErrorProfile {
     override val language get() = ClickHouseDialect
@@ -30,6 +32,8 @@ object ClickHouseNativeErrorProfile : NativeErrorProfile {
     override val label = "ClickHouse"
     override val localParser = true
     override val reportsPsiErrors = true
+    override val hostSql get() = ClickHouseHostSql
+    override val injectionHosts get() = setOfNotNull(Language.findLanguageByID("kotlin"))
 
     private val verification = DataSourceVerification(
         DialectDataSourceResolver(ClickHouseDbms.CLICKHOUSE_BRIKK),

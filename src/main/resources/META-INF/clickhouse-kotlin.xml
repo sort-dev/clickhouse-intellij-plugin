@@ -1,0 +1,7 @@
+<idea-plugin>
+    <extensions defaultExtensionNs="com.intellij">
+        <languageInjectionContributor language="kotlin" implementationClass="dev.sort.clickhouse.brikk.kotlin.ClickHouseBrikkInjector" order="first"/>
+        <languageInjectionPerformer language="kotlin" implementationClass="dev.sort.clickhouse.brikk.kotlin.ClickHouseBrikkInjector" order="first"/>
+        <externalAnnotator language="kotlin" implementationClass="dev.sort.clickhouse.validation.ClickHouseNativeErrorAnnotator"/>
+    </extensions>
+</idea-plugin>

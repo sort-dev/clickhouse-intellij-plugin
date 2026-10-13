@@ -12,6 +12,10 @@
     ]]></description>
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.database</depends>
+    <depends optional="true" config-file="clickhouse-kotlin.xml">org.jetbrains.kotlin</depends>
+    <extensions defaultExtensionNs="org.jetbrains.kotlin">
+        <supportsKotlinPluginMode supportsK2="true" supportsK1="false"/>
+    </extensions>
     <extensions defaultExtensionNs="com.intellij">
         <sql.dialect dbms="CLICKHOUSE_BRIKK" implementationClass="dev.sort.clickhouse.sql.ClickHouseDialect" order="first"/>
         <lang.parserDefinition language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.sql.ClickHouseParserDefinition"/>
@@ -20,6 +24,7 @@
         <lang.quoteHandler language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.sql.ClickHouseQuoteHandler"/>
         <externalAnnotator language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.validation.ClickHouseNativeErrorAnnotator"/>
         <highlightErrorFilter implementation="dev.sort.clickhouse.validation.ClickHouseNativePsiFilter"/>
+        <highlightErrorFilter implementation="dev.sort.clickhouse.brikk.ClickHousePlaceholderErrorFilter"/>
         <annotator language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.sql.ClickHouseMaskedSpanAnnotator"/>
         <completion.contributor language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.sql.ClickHouseCompletionContributor" id="clickhouse.metadata" order="first"/>
         <completion.confidence language="ClickHouseSQL" implementation="dev.sort.clickhouse.sql.ClickHouseCompletionConfidence" order="first"/>

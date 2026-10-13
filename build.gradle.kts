@@ -6,7 +6,6 @@ group = "dev.sort.clickhouse"
 version = "0.1.0-SNAPSHOT"
 
 sqlDialectPlugin {
-    kotlinTests = false
     legalFiles = listOf("LICENSE", "THIRD_PARTY_NOTICES.md")
     embeddedLibraries = with(libs.versions) {
         setOf(
@@ -15,6 +14,7 @@ sqlDialectPlugin {
             "brikk-sql-intellij-support-${brikk.sql.intellij.support.get()}.jar",
             "brikk-sql-verify-api-${brikk.sql.core.get()}.jar",
             "brikk-sql-verify-clickhouse-${brikk.sql.core.get()}.jar",
+            "brikk-engine-kotlin-intellij-support-${brikk.engine.kotlin.intellij.support.get()}.jar",
         )
     }
     requiredNotices = listOf("brikk-sql-intellij-support", "brikk-sql-metadata", "Apache License 2.0")
@@ -24,6 +24,7 @@ dependencies {
     implementation(libs.brikk.sql.jvm)
     implementation(libs.brikk.sql.metadata.jvm)
     implementation(libs.brikk.sql.intellij.support)
+    implementation(libs.brikk.engine.kotlin.intellij.support)
     implementation("dev.brikk.house:brikk-sql-verify-clickhouse:${libs.versions.brikk.sql.core.get()}")
     testImplementation(libs.brikk.sql.intellij.test.support)
 }
