@@ -15,6 +15,7 @@ import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.extensions.PluginId
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.testFramework.LoggedErrorProcessor
+import com.intellij.testFramework.TestApplicationManager
 import java.util.concurrent.CopyOnWriteArrayList
 
 // The isolation worker excludes Brikk jars from its test classpath.
@@ -24,13 +25,14 @@ class PluginIsolationTest : BasePlatformTestCase() {
     private var expectedProbe: Throwable? = null
 
     override fun setUp() {
-        super.setUp()
+        TestApplicationManager.getInstance()
         logging = LoggedErrorProcessor.executeWith(object : LoggedErrorProcessor() {
             override fun processError(category: String, message: String, details: Array<out String>, t: Throwable?): Set<Action> {
                 backgroundErrors += t ?: AssertionError(message + "\n" + details.joinToString("\n"))
                 return if (t === expectedProbe && t != null) Action.NONE else super.processError(category, message, details, t)
             }
         })
+        super.setUp()
     }
 
     override fun tearDown() {
@@ -56,6 +58,16 @@ class PluginIsolationTest : BasePlatformTestCase() {
             expectedProbe = null
             backgroundErrors.remove(probe)
         }
+    }
+
+    fun testKotlinAbsentStartupKeepsOptionalExtensionsUnloaded() {
+        assertFalse(PluginManagerCore.getPlugin(PluginId.getId("org.jetbrains.kotlin"))?.isEnabled == true)
+        val rules = ApplicationManager.getApplication().extensionArea
+            .getExtensionPoint<Any>("dev.sort.clickhouse.inspectionRule").extensionList
+        assertEmpty(rules)
+        val facts = ApplicationManager.getApplication().extensionArea
+            .getExtensionPoint<Any>("dev.sort.clickhouse.relationFacts").extensionList
+        assertEmpty(facts)
     }
 
     fun testSharedLibrariesBelongToTheirBundlingPlugin() {
