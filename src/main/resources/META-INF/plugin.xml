@@ -15,6 +15,7 @@
     <depends optional="true" config-file="clickhouse-kotlin.xml">org.jetbrains.kotlin</depends>
     <extensionPoints>
         <extensionPoint qualifiedName="dev.sort.clickhouse.relationFacts" interface="dev.brikk.house.sql.intellij.relation.ExternalRelationFacts" dynamic="true"/>
+        <extensionPoint qualifiedName="dev.sort.clickhouse.inspectionRule" interface="dev.sort.clickhouse.brikk.ClickHouseInspectionRule" dynamic="true"/>
     </extensionPoints>
     <extensions defaultExtensionNs="org.jetbrains.kotlin">
         <supportsKotlinPluginMode supportsK2="true" supportsK1="false"/>

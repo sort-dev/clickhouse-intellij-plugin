@@ -10,9 +10,25 @@ import dev.brikk.house.sql.intellij.pipe.PipeRunToStageIntention
 import dev.brikk.house.sql.intellij.pipe.PipeStageCompletionContributor
 import dev.brikk.house.sql.intellij.pipe.PipeStageKeywordAnnotator
 import com.intellij.psi.PsiFile
+import com.intellij.notification.NotificationType
+import com.intellij.openapi.actionSystem.CommonDataKeys
+import dev.brikk.house.sql.intellij.ExecuteInterceptor
+import dev.brikk.house.sql.intellij.ExecutionClaim
+import dev.brikk.house.sql.intellij.notifyEscaped
+import dev.sort.clickhouse.brikk.clickHouseInspectionRules
 
 class ClickHouseExecuteConfiguration : CooperativeExecuteConfiguration() {
-    override val interceptor = PipeExecuteInterceptor(ClickHousePipeDialect)
+    private val pipes = PipeExecuteInterceptor(ClickHousePipeDialect)
+    override val interceptor = ExecuteInterceptor { event, option ->
+        val file = event.getData(CommonDataKeys.PSI_FILE)
+        val editor = event.getData(CommonDataKeys.EDITOR)
+        val offset = if (editor?.selectionModel?.hasSelection() == true) editor.selectionModel.selectionStart else editor?.caretModel?.offset ?: 0
+        if (file != null && clickHouseInspectionRules.extensionList.any { it.isInspectionOnly(file, offset) }) {
+            notifyEscaped(event.project, ClickHousePipeDialect.notificationGroup, ClickHousePipeDialect.label,
+                "Brikk SQL is an inspection-only view; execute it through the Brikk runtime.", NotificationType.WARNING)
+            ExecutionClaim.HANDLED
+        } else pipes.execute(event, option)
+    }
 }
 
 class ClickHouseExecutePromoter : CooperativeExecutePromoter()

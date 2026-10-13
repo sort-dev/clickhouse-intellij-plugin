@@ -1,6 +1,7 @@
 <idea-plugin>
     <extensions defaultExtensionNs="dev.sort.clickhouse">
         <relationFacts implementation="dev.sort.clickhouse.brikk.kotlin.ClickHouseBrikkRelationFacts"/>
+        <inspectionRule implementation="dev.sort.clickhouse.brikk.kotlin.ClickHouseBrikkInspectionRule"/>
     </extensions>
     <extensions defaultExtensionNs="com.intellij">
         <languageInjectionContributor language="kotlin" implementationClass="dev.sort.clickhouse.brikk.kotlin.ClickHouseBrikkInjector" order="first"/>
