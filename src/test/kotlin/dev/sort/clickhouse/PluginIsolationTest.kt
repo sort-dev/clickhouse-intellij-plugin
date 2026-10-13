@@ -1,6 +1,9 @@
 package dev.sort.clickhouse
 
 import com.intellij.ide.plugins.PluginManagerCore
+import com.intellij.openapi.application.AccessToken
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionUiKind
 import com.intellij.openapi.actionSystem.ActionWithDelegate
@@ -11,9 +14,50 @@ import com.intellij.openapi.actionSystem.impl.DynamicActionConfigurationCustomiz
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.extensions.PluginId
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.intellij.testFramework.LoggedErrorProcessor
+import java.util.concurrent.CopyOnWriteArrayList
 
 // The isolation worker excludes Brikk jars from its test classpath.
 class PluginIsolationTest : BasePlatformTestCase() {
+    private val backgroundErrors = CopyOnWriteArrayList<Throwable>()
+    private var logging: AccessToken? = null
+    private var expectedProbe: Throwable? = null
+
+    override fun setUp() {
+        super.setUp()
+        logging = LoggedErrorProcessor.executeWith(object : LoggedErrorProcessor() {
+            override fun processError(category: String, message: String, details: Array<out String>, t: Throwable?): Set<Action> {
+                backgroundErrors += t ?: AssertionError(message + "\n" + details.joinToString("\n"))
+                return if (t === expectedProbe && t != null) Action.NONE else super.processError(category, message, details, t)
+            }
+        })
+    }
+
+    override fun tearDown() {
+        try {
+            super.tearDown()
+        } finally {
+            logging?.finish()
+            if (backgroundErrors.isNotEmpty()) {
+                throw AssertionError("Unexpected logged errors during isolation").apply { backgroundErrors.forEach(::addSuppressed) }
+            }
+        }
+    }
+
+    fun testErrorsLoggedOnPooledThreadsAreCaptured() {
+        val probe = AssertionError("Expected isolation logging probe")
+        expectedProbe = probe
+        try {
+            ApplicationManager.getApplication().executeOnPooledThread {
+                Logger.getInstance(javaClass).error("Expected isolation logging probe", probe)
+            }.get()
+            assertTrue(backgroundErrors.contains(probe))
+        } finally {
+            expectedProbe = null
+            backgroundErrors.remove(probe)
+        }
+    }
+
     fun testSharedLibrariesBelongToTheirBundlingPlugin() {
         val plugins = listOf("clickhouse") + System.getProperty("test.siblingPlugins", "")
             .split(',').filter(String::isNotBlank)
