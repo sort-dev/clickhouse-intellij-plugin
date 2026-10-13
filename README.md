@@ -9,6 +9,11 @@ The driver uses ClickHouse's [documented JDBC facade](https://clickhouse.com/doc
 itself. Database Tools manages the stock `ClickHouse` artifact's version and
 packaging; no separate JDBC implementation is bundled or pinned by this plugin.
 
+CH.2 live catalog activation is pending shared `LiveCatalogProfile.connectionProperties(dataSource)`
+and on-connect transaction guards. The read-only scalar/aggregate/table-function harvester is tested,
+but completion still uses bundled metadata. Shared `definitionQuery("clickhouse", ...)` and
+`DefinedObject.DICTIONARY` are also missing; no local SHOW CREATE implementation is substituted.
+
 The lexer masks the unsupported PARTITION BY clause of INSERT INTO FUNCTION so
 the owner-shaped s3 export keeps structured, error-free stock PSI as one statement.
 Core ranges bound raw FORMAT data. Non-Values data ends at a blank line, a line

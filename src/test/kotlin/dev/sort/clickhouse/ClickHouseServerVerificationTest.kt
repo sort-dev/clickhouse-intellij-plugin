@@ -15,21 +15,63 @@ import com.intellij.util.ui.classpath.SimpleClasspathElementFactory
 import com.intellij.testFramework.PlatformTestUtil
 import dev.brikk.house.sql.intellij.testing.setSqlDialectMapping
 import dev.brikk.house.sql.intellij.catalog.HelperConnectionPoint
+import dev.brikk.house.sql.intellij.catalog.CatalogRowSource
+import dev.brikk.house.sql.intellij.testing.JdbcCatalogRows
+import dev.sort.clickhouse.catalog.ClickHouseCatalogHarvester
+import dev.brikk.house.sql.metadata.FunctionKind
 import dev.brikk.house.sql.verify.VerifyResult
 import dev.sort.clickhouse.sql.ClickHouseDialect
 import dev.sort.clickhouse.validation.ClickHouseNativeErrorProfile
 import java.net.URI
+import java.net.URLClassLoader
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.UUID
+import java.sql.Driver
+import java.util.Properties
 import java.util.concurrent.Callable
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.runBlocking
 
 class ClickHouseServerVerificationTest : ClickHousePlatformTestCase() {
+    fun testCatalogHarvesterReadsOnlySmallSystemInventories() {
+        val url = requireNotNull(System.getenv("BRIKK_CLICKHOUSE_URL")?.takeIf(String::isNotBlank))
+        val jar = Path.of(System.getenv("BRIKK_CLICKHOUSE_DRIVER") ?: System.getProperty("clickhouse.driver.fixture"))
+        val jars = arrayOf(jar.toUri().toURL(), jar.resolveSibling("slf4j-api-2.0.7.jar").toUri().toURL())
+        URLClassLoader(jars, javaClass.classLoader).use { loader ->
+            val driver = loader.loadClass("com.clickhouse.jdbc.ClickHouseDriver").getConstructor().newInstance() as Driver
+            val properties = Properties().apply {
+                setProperty("user", "default")
+                setProperty("password", "")
+                setProperty("compress", "false")
+                setProperty("decompress", "false")
+            }
+            requireNotNull(driver.connect(url, properties)).use { connection ->
+                val jdbc = JdbcCatalogRows(connection, 5)
+                val queried = linkedMapOf<String, MutableList<List<String?>>>()
+                val started = System.nanoTime()
+                val harvest = requireNotNull(ClickHouseCatalogHarvester.harvest(CatalogRowSource { sql, read ->
+                    val values = queried.getOrPut(sql, ::ArrayList)
+                    jdbc.forEachRow("$sql SETTINGS readonly = 1") { row ->
+                        val columns = if (sql == ClickHouseCatalogHarvester.SQL_FUNCTIONS) 3 else 1
+                        values += (1..columns).map(row::string)
+                        read(row)
+                    }
+                }))
+                assertSameElements(queried.keys, listOf(ClickHouseCatalogHarvester.SQL_VERSION, ClickHouseCatalogHarvester.SQL_FUNCTIONS, ClickHouseCatalogHarvester.SQL_TABLE_FUNCTIONS))
+                val expected = queried.getValue(ClickHouseCatalogHarvester.SQL_FUNCTIONS).filter { !it[0].orEmpty().startsWith("__") || it[2] == "SQLUserDefined" }
+                    .map { requireNotNull(it[0]) to if (it[1] == "1") FunctionKind.AGGREGATE else FunctionKind.SCALAR } +
+                    queried.getValue(ClickHouseCatalogHarvester.SQL_TABLE_FUNCTIONS).mapNotNull { row -> row[0]?.takeUnless { it.startsWith("__") }?.let { it to FunctionKind.TABLE_VALUED } }
+                assertSameElements(expected.distinct(), harvest.shared.functions.map { it.def.name to it.def.kind })
+                assertFalse(harvest.shared.signatures)
+                println("ClickHouse ${harvest.shared.serverVersion}: harvested ${harvest.shared.functions.size} name/kind pairs in ${(System.nanoTime() - started) / 1_000_000} ms using read-only system queries")
+            }
+        }
+    }
+
     fun testStoredLoginVerifiesExportSyntaxWithoutWritingAnObject() {
         val url = requireNotNull(System.getenv("BRIKK_CLICKHOUSE_URL")?.takeIf(String::isNotBlank))
         val endpoint = URI.create("http:" + url.removePrefix("jdbc:clickhouse:"))
