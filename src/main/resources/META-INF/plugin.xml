@@ -4,7 +4,10 @@
     <vendor url="https://sort.dev" email="jayson@sort.dev">Sortdev SRL</vendor>
     <description><![CDATA[
         <p>ClickHouse SQL editing built on the Brikk SQL shared libraries.</p>
-        <p>ClickHouse statement boundaries and native Database Tools integration.</p>
+        <p>ClickHouse statement boundaries, metadata completion and optional PIPE authoring.
+        Enable ClickHouse PIPE support under Settings &gt; Tools &gt; ClickHouse PIPE to
+        preview generated SQL, execute pipelines and run stages up to the caret.</p>
+        <p>No native validator is bundled. Generated SQL is unverified by a ClickHouse engine.</p>
     ]]></description>
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.database</depends>
@@ -16,12 +19,35 @@
         <lang.quoteHandler language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.sql.ClickHouseQuoteHandler"/>
         <highlightErrorFilter implementation="dev.sort.clickhouse.sql.ClickHouseErrorFilter"/>
         <annotator language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.sql.ClickHouseMaskedSpanAnnotator"/>
-        <completion.contributor language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.sql.ClickHouseCompletionContributor" order="first"/>
+        <completion.contributor language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.sql.ClickHouseCompletionContributor" id="clickhouse.metadata" order="first"/>
         <completion.confidence language="ClickHouseSQL" implementation="dev.sort.clickhouse.sql.ClickHouseCompletionConfidence" order="first"/>
+        <completion.contributor language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.pipe.ClickHouseStageCompletion" order="first, before clickhouse.metadata"/>
+        <annotator language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.pipe.ClickHouseStageAnnotator"/>
+        <dynamicActionConfigurationCustomizer implementation="dev.sort.clickhouse.pipe.ClickHouseExecuteConfiguration"/>
+        <actionPromoter implementation="dev.sort.clickhouse.pipe.ClickHouseExecutePromoter" order="first"/>
+        <projectConfigurable id="dev.sort.clickhouse.pipe" displayName="ClickHouse PIPE" parentId="tools" nonDefaultProject="true" instance="dev.sort.clickhouse.pipe.ClickHousePipeConfigurable"/>
+        <notificationGroup id="ClickHouse PIPE" displayType="BALLOON"/>
+        <intentionAction>
+            <language>ClickHouseSQL</language>
+            <className>dev.sort.clickhouse.pipe.ClickHousePreviewIntention</className>
+            <category>ClickHouse</category>
+        </intentionAction>
+        <intentionAction>
+            <language>ClickHouseSQL</language>
+            <className>dev.sort.clickhouse.pipe.ClickHouseRunToStageIntention</className>
+            <category>ClickHouse</category>
+        </intentionAction>
     </extensions>
     <extensions defaultExtensionNs="com.intellij.database">
         <dbms id="CLICKHOUSE_BRIKK" instance="dev.sort.clickhouse.ClickHouseDbms.CLICKHOUSE_BRIKK"/>
         <extensionFallback dbms="CLICKHOUSE_BRIKK" fallbackDbms="CLICKHOUSE"/>
         <driversConfig config="config/clickhouse-drivers.xml"/>
     </extensions>
+    <actions>
+        <group id="ClickHousePipe.EditorMenu" text="ClickHouse PIPE" popup="true">
+            <add-to-group group-id="EditorPopupMenu" anchor="first"/>
+            <action id="ClickHousePipe.Preview" class="dev.sort.clickhouse.pipe.ClickHousePreviewAction" text="Preview Generated SQL"/>
+            <action id="ClickHousePipe.RunToStage" class="dev.sort.clickhouse.pipe.ClickHouseRunToStageAction" text="Run Stages up to Caret"/>
+        </group>
+    </actions>
 </idea-plugin>

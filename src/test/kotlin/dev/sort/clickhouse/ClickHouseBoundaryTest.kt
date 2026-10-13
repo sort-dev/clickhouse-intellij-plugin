@@ -2,6 +2,7 @@ package dev.sort.clickhouse
 
 import com.intellij.database.script.ScriptModel
 import com.intellij.openapi.util.TextRange
+import com.intellij.psi.PsiComment
 import com.intellij.psi.PsiErrorElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
@@ -62,7 +63,7 @@ class ClickHouseBoundaryTest : ClickHousePlatformTestCase() {
 
     fun testOwnerInsertKeepsErrorFreeStructuredPsiOnOneOrManyLines() {
         val owner = boundaryCorpus.first { it.name == "owner multiline partitioned s3 insert" }.sql
-        for (sql in listOf(owner, owner.lines().joinToString(" ") { it.trim() })) {
+        for (sql in listOf(owner, owner.lines().joinToString(" ") { it.trim() }, owner.replace("INTO FUNCTION", "INTO TABLE FUNCTION"))) {
             val file = configure("$sql\nSELECT 2;")
             val insert = statements(file).first()
             assertEquals(sql.removeSuffix(";"), insert.text)
@@ -70,6 +71,29 @@ class ClickHouseBoundaryTest : ClickHousePlatformTestCase() {
             assertNotNull(PsiTreeUtil.findChildOfType(insert, SqlInsertDmlInstruction::class.java))
             assertEmpty(PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java))
         }
+    }
+
+    fun testPartitionMaskLeavesWindowClausesAlone() {
+        val file = configure("INSERT INTO events SELECT sum(value) OVER (PARTITION BY id) FROM events;")
+        assertEmpty(PsiTreeUtil.findChildrenOfType(file, PsiComment::class.java))
+        assertEmpty(PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java))
+        assertNotNull(PsiTreeUtil.findChildOfType(file, SqlInsertDmlInstruction::class.java))
+    }
+
+    fun testCsvQuotedBlankAndTerminatorLinesRemainData() {
+        val data = "INSERT INTO events FORMAT CSV\n1,\"first\n\n;\nlast\""
+        val sql = "$data\n;\nSELECT 3;"
+        val file = configure(sql)
+        assertEquals(listOf(data, "SELECT 3"), statements(file).map { it.text.trimEnd() })
+        val snapshot = SqlScriptSnapshot.parse(sql, "clickhouse")
+        val range = requireNotNull(snapshot.at(sql.indexOf("\n;\n") + 1))
+        assertNull(range.boundaryError)
+        assertEquals(0, range.start)
+        assertEquals(sql.lastIndexOf("\n;\n") + 2, range.end)
+        val selected = SqlPsiFacade.getInstance(project).createScriptModel(file)
+            .subModel(ScriptModel.PositionRange(sql.indexOf("\n;\n") + 1)).statements()
+            .map { it.query() }.filter { it != file.text }.map(String::trim).toList()
+        assertEquals(data, selected.first())
     }
 
     fun testLexerRestartsKeepTheSameTokens() {
