@@ -4,6 +4,10 @@ ClickHouse SQL editing for Database Tools by Sortdev SRL. Apache-2.0.
 Choose the **ClickHouse (sort.dev)** dialect for a `.sql` file, or its datasource
 driver for consoles. Language id `ClickHouseSQL`, DBMS `CLICKHOUSE_BRIKK`.
 Native introspection, DDL, types and server error handling come from stock ClickHouse.
+The driver uses ClickHouse's [documented JDBC facade](https://clickhouse.com/docs/en/integrations/language-clients/java/jdbc),
+`com.clickhouse.jdbc.ClickHouseDriver`, rather than choosing a V1/V2 implementation
+itself. Database Tools manages the stock `ClickHouse` artifact's version and
+packaging; no separate JDBC implementation is bundled or pinned by this plugin.
 
 The lexer masks the unsupported PARTITION BY clause of INSERT INTO FUNCTION so
 the owner-shaped s3 export keeps structured, error-free stock PSI as one statement.
