@@ -17,4 +17,6 @@ support/test-support 0.2.0-SNAPSHOT resolve exclusively from Maven Local.
 Build conventions are vendored with
 `../intellij-sql-plugin-gradle-conventions/sync-into.sh "$PWD"`.
 
-Completion and ClickHouse PIPE integration are the next CH.0 steps.
+Completion uses ClickHouse 26.5.1.1 metadata. Functions retain catalog case;
+keywords insert UPPER. Missing function signatures are not guessed.
+ClickHouse PIPE integration is the next CH.0 step.

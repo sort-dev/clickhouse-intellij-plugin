@@ -16,6 +16,8 @@
         <lang.quoteHandler language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.sql.ClickHouseQuoteHandler"/>
         <highlightErrorFilter implementation="dev.sort.clickhouse.sql.ClickHouseErrorFilter"/>
         <annotator language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.sql.ClickHouseMaskedSpanAnnotator"/>
+        <completion.contributor language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.sql.ClickHouseCompletionContributor" order="first"/>
+        <completion.confidence language="ClickHouseSQL" implementation="dev.sort.clickhouse.sql.ClickHouseCompletionConfidence" order="first"/>
     </extensions>
     <extensions defaultExtensionNs="com.intellij.database">
         <dbms id="CLICKHOUSE_BRIKK" instance="dev.sort.clickhouse.ClickHouseDbms.CLICKHOUSE_BRIKK"/>
