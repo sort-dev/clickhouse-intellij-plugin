@@ -65,6 +65,15 @@ The shared adapters account for 15 internal API usages in `GenericJdbcIntrospect
 574 experimental usages and 6–7 deprecated/removal usages. The connection-interceptor
 delegating stubs are documented in the shared support README. No compatibility,
 structure or dependency failures were reported; these API-usage notices remain visible.
+
+The runtime smoke gate is not green with brikk-sql `654d6a8` and Kotlin helper
+`44d6d47`. The helper calls the old `RelationFacts` constructor and needs an
+upstream rebuild for `searchPath`. Valid INSERT FORMAT payloads also receive a
+false local-parser error at FORMAT; the highlighting regression stays enabled.
+Model-backed column insertion works. Table insertion is not proven by the
+offline fixture, which offers no table under either this dialect or stock ClickHouse.
+Real-server smoke checks live-function insertion, namespace switching, definitions
+and parse-only export validation without running the submitted SQL.
 Enable **ClickHouse PIPE support** under Settings > Tools > ClickHouse PIPE.
 PIPE defaults off; `-Dclickhouse.pipes=false` vetoes it. SELECT-first and FROM-first
 pipelines use shared Execute, preview, run-to-stage, completion and coloring.

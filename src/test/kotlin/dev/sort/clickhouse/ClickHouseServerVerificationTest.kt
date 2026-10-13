@@ -18,6 +18,9 @@ import com.intellij.database.util.ObjectPath
 import com.intellij.database.util.SearchPath
 import com.intellij.database.remote.jdbc.helpers.JdbcNativeUtil
 import com.intellij.lang.annotation.HighlightSeverity
+import com.intellij.codeInsight.lookup.Lookup
+import com.intellij.codeInsight.CodeInsightSettings
+import dev.brikk.house.sql.metadata.FunctionPresentation
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
 import com.intellij.openapi.util.Disposer
@@ -94,6 +97,7 @@ class ClickHouseServerVerificationTest : ClickHousePlatformTestCase() {
         val suffix = UUID.randomUUID().toString().replace("-", "")
         val user = "ch1_user_$suffix"
         val marker = "ch1_export_$suffix"
+        val liveFunction = "gate_live_$suffix"
         val password = "ch1-synthetic-password"
         fun adminQuery(sql: String): String = HttpClient.newHttpClient().use { client ->
             val response = client.send(HttpRequest.newBuilder(admin).POST(HttpRequest.BodyPublishers.ofString(sql)).build(), HttpResponse.BodyHandlers.ofString())
@@ -102,6 +106,8 @@ class ClickHouseServerVerificationTest : ClickHousePlatformTestCase() {
         }
         adminQuery("CREATE USER $user IDENTIFIED WITH plaintext_password BY '$password'")
         Disposer.register(testRootDisposable) { adminQuery("DROP USER IF EXISTS $user") }
+        adminQuery("CREATE FUNCTION $liveFunction AS (x) -> x + 1")
+        Disposer.register(testRootDisposable) { adminQuery("DROP FUNCTION IF EXISTS $liveFunction") }
         adminQuery("GRANT SELECT, INSERT, FILE, S3, SHOW TABLES, SHOW DICTIONARIES ON *.* TO $user")
         val namespace = "ch2_namespace_$suffix"
         adminQuery("CREATE DATABASE $namespace")
@@ -147,6 +153,20 @@ class ClickHouseServerVerificationTest : ClickHousePlatformTestCase() {
                 if (!refresh.isDone) refresh.cancel(true)
             }
             assertTrue(live.selection(source).source is CatalogSource.Live)
+            val completionFile = myFixture.configureByText("live-functions-$suffix.sql", "SELECT ${liveFunction}<caret>")
+            setSqlDialectMapping(project, completionFile.virtualFile, ClickHouseDialect)
+            val completionSettings = CodeInsightSettings.getInstance()
+            val previousAutocomplete = completionSettings.AUTOCOMPLETE_ON_CODE_COMPLETION
+            completionSettings.AUTOCOMPLETE_ON_CODE_COMPLETION = false
+            val candidates = try {
+                myFixture.completeBasic().orEmpty().filter { (it.`object` as? FunctionPresentation)?.name == liveFunction }
+            } finally {
+                completionSettings.AUTOCOMPLETE_ON_CODE_COMPLETION = previousAutocomplete
+            }
+            assertEquals(candidates.toString(), 1, candidates.size)
+            myFixture.lookup.currentItem = candidates.single()
+            myFixture.finishLookup(Lookup.NORMAL_SELECT_CHAR)
+            assertEquals("SELECT $liveFunction()", myFixture.editor.document.text)
             val model = ModelFactory.BLACK_HOLE.createModel(ClickHouseDbms.CLICKHOUSE_BRIKK)
             val schema = (model.root as CHouseRoot).schemas.createOrGet(namespace)
             val definitions = listOf(
