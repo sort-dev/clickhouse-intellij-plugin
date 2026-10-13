@@ -5,7 +5,7 @@ import com.intellij.sql.dialects.clickhouse.CHouseLexer
 import com.intellij.sql.psi.SqlTokens
 import dev.brikk.house.sql.intellij.lexer.MaskingSqlLexer
 
-class ClickHouseLexer : MaskingSqlLexer(CHouseLexer()) {
+class ClickHouseLexer : MaskingSqlLexer(CHouseLexer(), parameterDialect = "clickhouse") {
     private var functionInsert = false
 
     override fun resetStatement() {

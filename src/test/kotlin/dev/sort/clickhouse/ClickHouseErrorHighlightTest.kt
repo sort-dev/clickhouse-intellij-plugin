@@ -23,4 +23,22 @@ class ClickHouseErrorHighlightTest : ClickHousePlatformTestCase() {
         assertEmpty(PsiTreeUtil.findChildrenOfType(myFixture.file, PsiErrorElement::class.java))
         assertEmpty(myFixture.doHighlighting(HighlightSeverity.ERROR))
     }
+
+    fun testMaskedBindFallbackDoesNotShowSpuriousGrammarErrors() {
+        val owner = boundaryCorpus.first { it.name == "owner multiline partitioned s3 insert" }.sql
+        for (sql in listOf(
+            "INSERT INTO FUNCTION null('id UInt64') PARTITION BY toString(:partition) SELECT 1 AS id;",
+            owner.replace("'year='", ":prefix"),
+            "INSERT INTO FUNCTION null('id UInt64, ts DateTime') PARTITION BY concat(:prefix, toString(ts)) (id, ts) SELECT id, ts FROM events;",
+        )) {
+            configure(sql)
+            assertEmpty(sql, myFixture.doHighlighting(HighlightSeverity.ERROR))
+        }
+    }
+
+    fun testGenuineErrorsAfterAMaskedBindFallbackRemainVisible() {
+        val insert = "INSERT INTO FUNCTION null('id UInt64') PARTITION BY toString(:partition) SELECT 1 AS id;"
+        configure("$insert\nSELECT FROM WHERE 1 +;")
+        assertTrue(myFixture.doHighlighting(HighlightSeverity.ERROR).any { it.startOffset > insert.length })
+    }
 }
