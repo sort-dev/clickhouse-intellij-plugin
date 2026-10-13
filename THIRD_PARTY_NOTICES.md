@@ -7,6 +7,8 @@ This plugin embeds the following Apache License 2.0 libraries:
   https://github.com/brikk-house/brikk-sql
 - `brikk-sql-intellij-support:0.2.0-SNAPSHOT`, Copyright Brikk / Sortdev SRL.
   https://github.com/brikk-house/brikk-sql
+- `brikk-sql-verify-api:0.20.0-SNAPSHOT`, Copyright Brikk / Sortdev SRL.
+  https://github.com/brikk-house/brikk-sql
 
 Brikk SQL includes a Kotlin port of SQLGlot and portions derived from polyglot
 and DuckDB, licensed under MIT:

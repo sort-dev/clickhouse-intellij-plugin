@@ -13,6 +13,7 @@ sqlDialectPlugin {
             "brikk-sql-jvmMain-${brikk.sql.core.get()}.jar",
             "brikk-sql-metadata-jvmMain-${brikk.sql.core.get()}.jar",
             "brikk-sql-intellij-support-${brikk.sql.intellij.support.get()}.jar",
+            "brikk-sql-verify-api-${brikk.sql.core.get()}.jar",
         )
     }
     requiredNotices = listOf("brikk-sql-intellij-support", "brikk-sql-metadata", "Apache License 2.0")
