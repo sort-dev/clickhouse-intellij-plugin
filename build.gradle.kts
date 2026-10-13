@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "dev.sort.clickhouse"
-version = "0.1.0-SNAPSHOT"
+version = "0.1.0"
 
 sqlDialectPlugin {
     legalFiles = listOf("LICENSE", "THIRD_PARTY_NOTICES.md")
