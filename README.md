@@ -66,10 +66,12 @@ The shared adapters account for 15 internal API usages in `GenericJdbcIntrospect
 delegating stubs are documented in the shared support README. No compatibility,
 structure or dependency failures were reported; these API-usage notices remain visible.
 
-The runtime smoke gate is not green with brikk-sql `654d6a8` and Kotlin helper
-`44d6d47`. The helper calls the old `RelationFacts` constructor and needs an
-upstream rebuild for `searchPath`. Valid INSERT FORMAT payloads also receive a
-false local-parser error at FORMAT; the highlighting regression stays enabled.
+The runtime smoke gate passes with brikk-sql `12162f8` and Kotlin helper
+`507fe04`. Valid INSERT FORMAT payloads no longer receive a false local-parser
+error, and Kotlin relation facts link correctly. All regressions remain enabled.
+Kotlin-absent lanes pass 84 tests each on 261/262/263; Kotlin-present lanes pass
+102 each on 262/263. Five-plugin isolation passes 5 tests per lane and real-server
+smoke passes 2 per lane on 261/262/263, with no failures, errors or skips.
 Model-backed column insertion works. Table insertion is not proven by the
 offline fixture, which offers no table under either this dialect or stock ClickHouse.
 Real-server smoke checks live-function insertion, namespace switching, definitions
