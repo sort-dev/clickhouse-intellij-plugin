@@ -9,6 +9,7 @@ import dev.brikk.house.sql.intellij.pipe.PipeRunToStageAction
 import dev.brikk.house.sql.intellij.pipe.PipeRunToStageIntention
 import dev.brikk.house.sql.intellij.pipe.PipeStageCompletionContributor
 import dev.brikk.house.sql.intellij.pipe.PipeStageKeywordAnnotator
+import com.intellij.psi.PsiFile
 
 class ClickHouseExecuteConfiguration : CooperativeExecuteConfiguration() {
     override val interceptor = PipeExecuteInterceptor(ClickHousePipeDialect)
@@ -19,5 +20,7 @@ class ClickHousePreviewIntention : PipePreviewIntention(ClickHousePipeDialect)
 class ClickHouseRunToStageIntention : PipeRunToStageIntention(ClickHousePipeDialect)
 class ClickHousePreviewAction : PipePreviewAction(ClickHousePipeDialect)
 class ClickHouseRunToStageAction : PipeRunToStageAction(ClickHousePipeDialect)
-class ClickHouseStageCompletion : PipeStageCompletionContributor(ClickHousePipeDialect)
+class ClickHouseStageCompletion : PipeStageCompletionContributor(ClickHousePipeDialect) {
+    override fun inputCatalog(file: PsiFile, input: String) = null
+}
 class ClickHouseStageAnnotator : PipeStageKeywordAnnotator(ClickHousePipeDialect)

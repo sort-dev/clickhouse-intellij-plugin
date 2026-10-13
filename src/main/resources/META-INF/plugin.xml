@@ -13,6 +13,9 @@
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.database</depends>
     <depends optional="true" config-file="clickhouse-kotlin.xml">org.jetbrains.kotlin</depends>
+    <extensionPoints>
+        <extensionPoint qualifiedName="dev.sort.clickhouse.relationFacts" interface="dev.brikk.house.sql.intellij.relation.ExternalRelationFacts" dynamic="true"/>
+    </extensionPoints>
     <extensions defaultExtensionNs="org.jetbrains.kotlin">
         <supportsKotlinPluginMode supportsK2="true" supportsK1="false"/>
     </extensions>
@@ -25,6 +28,11 @@
         <externalAnnotator language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.validation.ClickHouseNativeErrorAnnotator"/>
         <highlightErrorFilter implementation="dev.sort.clickhouse.validation.ClickHouseNativePsiFilter"/>
         <highlightErrorFilter implementation="dev.sort.clickhouse.brikk.ClickHousePlaceholderErrorFilter"/>
+        <sql.resolveExtension implementation="dev.sort.clickhouse.brikk.ClickHouseRelationResolveExtension"/>
+        <sql.inspectionSuppressorDelegate implementation="dev.sort.clickhouse.brikk.ClickHouseRelationInspectionSuppressor"/>
+        <completion.contributor language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.brikk.ClickHouseRelationCompletionContributor" order="first, before clickhouse.metadata"/>
+        <gotoDeclarationHandler implementation="dev.sort.clickhouse.brikk.ClickHouseRelationGotoDeclarationHandler"/>
+        <annotator language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.brikk.ClickHouseRelationAnnotator"/>
         <annotator language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.sql.ClickHouseMaskedSpanAnnotator"/>
         <completion.contributor language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.sql.ClickHouseCompletionContributor" id="clickhouse.metadata" order="first"/>
         <completion.confidence language="ClickHouseSQL" implementation="dev.sort.clickhouse.sql.ClickHouseCompletionConfidence" order="first"/>

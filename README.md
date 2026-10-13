@@ -41,6 +41,8 @@ Kotlin is optional. Resolved `@BrikkSql` / `Sql.clickhouse` strings inject
 `ClickHouseSQL` through the shared Brikk host layer, overriding the runtime's
 older `BrikkSQL` annotation. Trims and interpolation offsets are preserved;
 remembered pending strings use placeholders, and cold pending hosts claim without injection.
+Shared relation analysis combines Brikk `Rel<T>` contracts with physical datasource
+facts for column completion, resolve, diagnostics and navigation to Kotlin properties.
 Enable **ClickHouse PIPE support** under Settings > Tools > ClickHouse PIPE.
 PIPE defaults off; `-Dclickhouse.pipes=false` vetoes it. SELECT-first and FROM-first
 pipelines use shared Execute, preview, run-to-stage, completion and coloring.
