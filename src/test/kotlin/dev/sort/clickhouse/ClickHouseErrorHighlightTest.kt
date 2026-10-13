@@ -24,7 +24,7 @@ class ClickHouseErrorHighlightTest : ClickHousePlatformTestCase() {
         assertEmpty(myFixture.doHighlighting(HighlightSeverity.ERROR))
     }
 
-    fun testMaskedBindFallbackHasNoErrorHighlightsAfterCoreColumnListFix() {
+    fun testMaskedBindFallbackHasNoErrorHighlights() {
         val owner = boundaryCorpus.first { it.name == "owner multiline partitioned s3 insert" }.sql
         for (sql in listOf(
             "INSERT INTO FUNCTION null('id UInt64') PARTITION BY toString(:partition) SELECT 1 AS id;",

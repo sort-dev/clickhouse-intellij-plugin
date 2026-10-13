@@ -42,8 +42,6 @@ length; typed ClickHouse parameters stay unchanged. Compression is disabled on
 helpers, and `ignore_unknown_config_key=true` tolerates the IDE's `session_id`.
 With the 0.9.8 JDBC driver, readonly=1 logins can yield Unavailable because the
 driver sends settings the server forbids; this never means the SQL is clean.
-New local core diagnostics can flag a destination column list after PARTITION BY;
-the server's acceptance clears that local false positive in the verified statement.
 Where IDE binds cannot be masked with certainty, verification gives no verdict
 and keeps local errors; uncertain text is never sent to the server.
 

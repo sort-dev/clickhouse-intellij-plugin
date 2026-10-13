@@ -18,7 +18,7 @@ class ClickHouseNativeWiringTest : ClickHousePlatformTestCase() {
         assertTrue(errors.toString(), errors.all { it.toolId == ClickHouseNativeErrorAnnotator::class.java })
     }
 
-    fun testKnownLibraryGapOneCombinedErrorPerMalformedStatement() {
+    fun testOneCombinedErrorPerMalformedStatement() {
         val sql = "SELECT FROM WHERE = 1"
         val file = myFixture.configureByText("single-combined-error.sql", sql)
         setSqlDialectMapping(project, file.virtualFile, ClickHouseDialect)
