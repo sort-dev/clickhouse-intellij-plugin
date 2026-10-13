@@ -29,5 +29,6 @@ pipelines use shared Execute, preview, run-to-stage, completion and coloring.
 There is no native validator; generated SQL has no engine verdict, never Accepted.
 ClickHouse `{name:Type}` parameters pass through unchanged for the server;
 IDE `:name` binds are prompted and substituted before lowering.
+IDE `:name` inside masked `PARTITION BY` is not prompted yet; shared parameter-aware masking is being addressed.
 Unsupported CALL, NATURAL JOIN, STRAIGHT_JOIN, star RENAME, PIVOT and UNPIVOT
 are refused or blocked rather than submitted.
