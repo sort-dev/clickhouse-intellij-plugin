@@ -49,6 +49,12 @@ Brikk strings have a bricks gutter marker. Pending markers show the typed cause
 when the shared host claim carries it. Cold pending claims currently have only
 a generic recognition status because the shared unavailable claim has no typed payload.
 Editor action banners come only from the shared helper's `BrikkHosts.actionNeeded`.
+
+Relation corpus v2.2 currently has no `clickhouse`-tagged cases. The ClickHouse
+Brikk fixtures cover contract completion/navigation, nullable PIPE output,
+hidden aliases, missing-column ranges, CTE projection and SELECT-first PIPE.
+Suggested applicability additions are `ordinary-alias`, `alias-hides-slot`,
+`ordinary-missing`, `cte-projection`, `pipe-where` and `select-first-pipe`.
 Enable **ClickHouse PIPE support** under Settings > Tools > ClickHouse PIPE.
 PIPE defaults off; `-Dclickhouse.pipes=false` vetoes it. SELECT-first and FROM-first
 pipelines use shared Execute, preview, run-to-stage, completion and coloring.
