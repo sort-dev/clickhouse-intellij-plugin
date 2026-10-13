@@ -1,12 +1,16 @@
 package dev.sort.clickhouse
 
 import com.intellij.codeInsight.CodeInsightSettings
+import com.intellij.codeInsight.daemon.impl.AnnotationHolderImpl
 import com.intellij.codeInsight.lookup.Lookup
-import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
+import com.intellij.lang.LanguageAnnotators
+import com.intellij.lang.annotation.AnnotationSession
 import com.intellij.openapi.util.TextRange
 import com.intellij.testFramework.IndexingTestUtil
 import dev.sort.clickhouse.pipe.ClickHousePipeDialect
 import dev.sort.clickhouse.pipe.ClickHousePreviewIntention
+import dev.sort.clickhouse.pipe.ClickHouseStageAnnotator
+import dev.brikk.house.sql.intellij.pipe.pipeStagePhrases
 
 class ClickHousePipeEditorTest : ClickHousePipeTestCase() {
     private fun complete(sql: String): List<String> {
@@ -24,8 +28,11 @@ class ClickHousePipeEditorTest : ClickHousePipeTestCase() {
     }
 
     fun testOnlyRunnableClickHouseStagesAreOffered() {
-        assertSameElements(complete("FROM events |> <caret>"), ClickHousePipeDialect.stagePhrases)
-        assertSameElements(complete("SELECT * FROM (FROM events |> <caret>) AS p"), ClickHousePipeDialect.stagePhrases)
+        for (sql in listOf("FROM events |> <caret>", "SELECT * FROM (FROM events |> <caret>) AS p")) {
+            val items = complete(sql)
+            assertSameElements(items, pipeStagePhrases("clickhouse"))
+            assertDoesntContain(items, "NATURAL JOIN", "PIVOT")
+        }
     }
 
     fun testMultiWordStageInsertionDoesNotRepeatThePrefix() {
@@ -53,9 +60,12 @@ class ClickHousePipeEditorTest : ClickHousePipeTestCase() {
     fun testOnlySupportedStageHeadsAreColoredAtTheirOffsets() {
         val sql = "FROM events |> NATURAL JOIN other |> WHERE id > 0 |> ORDER BY id"
         open(sql)
-        val ranges = myFixture.doHighlighting()
-            .filter { it.forcedTextAttributesKey == DefaultLanguageHighlighterColors.KEYWORD }
-            .map { TextRange(it.startOffset, it.endOffset) }
+        val annotator = LanguageAnnotators.INSTANCE.allForLanguage(myFixture.file.language)
+            .filterIsInstance<ClickHouseStageAnnotator>().single()
+        val holder = AnnotationHolderImpl(AnnotationSession(myFixture.file), false)
+        holder.runAnnotatorWithContext(myFixture.file, annotator)
+        holder.assertAllAnnotationsCreated()
+        val ranges = holder.map { TextRange(it.startOffset, it.endOffset) }
         assertSameElements(ranges, listOf("WHERE", "ORDER BY").map { word ->
             TextRange(sql.indexOf(word), sql.indexOf(word) + word.length)
         })

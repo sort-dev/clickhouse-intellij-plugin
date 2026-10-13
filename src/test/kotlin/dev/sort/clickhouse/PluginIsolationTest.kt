@@ -93,14 +93,13 @@ class PluginIsolationTest : BasePlatformTestCase() {
     }
 
     fun testRegistrationOrdersDelegateUnownedInputExactlyOnce() {
-        val configurations = mapOf(
-            "clickhouse" to "dev.sort.clickhouse.pipe.ClickHouseExecuteConfiguration",
-            "doris" to "dev.sort.doris.pipes.DorisPipesActionConfiguration",
-            "duckdb" to "dev.sort.duckdb.pipes.DuckdbPipesActionConfiguration",
-            "trino" to "dev.sort.trino.pipes.TrinoPipesActionConfiguration",
-        ).mapNotNull { (name, type) ->
-            PluginManagerCore.getPlugin(PluginId.getId("dev.sort.$name-intellij-plugin"))?.pluginClassLoader?.loadClass(type)
+        val names = listOf("clickhouse") + System.getProperty("test.siblingPlugins", "").split(',').filter(String::isNotBlank)
+        val loaders = names.map { name ->
+            requireNotNull(PluginManagerCore.getPlugin(PluginId.getId("dev.sort.$name-intellij-plugin"))?.pluginClassLoader)
         }
+        val registered = ApplicationManager.getApplication().extensionArea
+            .getExtensionPoint<DynamicActionConfigurationCustomizer>("com.intellij.dynamicActionConfigurationCustomizer").extensionList
+        val configurations = loaders.map { loader -> registered.single { it.javaClass.classLoader === loader }.javaClass }
         val manager = ActionManager.getInstance()
         val originals = EXECUTE_IDS.associateWith { requireNotNull(manager.getAction(it)) }
         val event = AnActionEvent.createEvent(SimpleDataContext.getProjectContext(project), Presentation(), "ClickHouseIsolation", ActionUiKind.NONE, null)
