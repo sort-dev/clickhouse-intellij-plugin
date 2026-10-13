@@ -3,7 +3,6 @@ package dev.sort.clickhouse
 import com.intellij.credentialStore.OneTimeString
 import com.intellij.database.access.DatabaseCredentials
 import com.intellij.database.dataSource.DatabaseConnectionManager
-import com.intellij.database.dataSource.DatabaseConnectionPoint
 import com.intellij.database.dataSource.DatabaseDriverImpl
 import com.intellij.database.dataSource.DatabaseDriverManager
 import com.intellij.database.dataSource.LocalDataSource
@@ -15,6 +14,7 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.util.ui.classpath.SimpleClasspathElementFactory
 import com.intellij.testFramework.PlatformTestUtil
 import dev.brikk.house.sql.intellij.testing.setSqlDialectMapping
+import dev.brikk.house.sql.intellij.catalog.HelperConnectionPoint
 import dev.brikk.house.sql.verify.VerifyResult
 import dev.sort.clickhouse.sql.ClickHouseDialect
 import dev.sort.clickhouse.validation.ClickHouseNativeErrorProfile
@@ -24,7 +24,6 @@ import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.Properties
 import java.util.UUID
 import java.util.concurrent.Callable
 import java.util.concurrent.TimeUnit
@@ -60,7 +59,7 @@ class ClickHouseServerVerificationTest : ClickHousePlatformTestCase() {
         val source = LocalDataSource().apply {
             name = "CH.1 server test $suffix"
             databaseDriver = driver
-            this.url = url
+            this.url = url + if ('?' in url) "&compress=true&decompress=true" else "?compress=true&decompress=true"
             username = user
             passwordStorage = LocalDataSource.Storage.MEMORY
             isAutoSynchronize = false
@@ -70,17 +69,13 @@ class ClickHouseServerVerificationTest : ClickHousePlatformTestCase() {
         LocalDataSourceManager.getInstance(project).addDataSource(source)
         Disposer.register(testRootDisposable) { LocalDataSourceManager.getInstance(project).removeDataSource(source) }
         val properties = mapOf("compress" to "false", "decompress" to "false", "ignore_unknown_config_key" to "true")
-        val point = object : DatabaseConnectionPoint.Adapter(source) {
-            override fun getConnectionProperties(): Properties = Properties().also {
-                it.putAll(super.getConnectionProperties())
-                it.putAll(properties)
-            }
-        }
+        val point = HelperConnectionPoint(source, properties)
         val session = runBlocking {
             DatabaseConnectionManager.getInstance().build(project, point).setRequestor(ConnectionRequestor.Anonymous()).setAskPassword(false).create()
         }
         requireNotNull(session).use {
             source.initScript = "INSERT INTO FUNCTION file('$marker-startup.tsv', 'TSV', 'id UInt64') SELECT 7"
+            assertTrue(source.url.orEmpty().contains("compress=true"))
             val rejectedSql = "SELECT 'unicode 😀' FRM unknown_table"
             val rejectedFile = myFixture.configureByText("server-rejection-$suffix.sql", rejectedSql)
             setSqlDialectMapping(project, rejectedFile.virtualFile, ClickHouseDialect)
