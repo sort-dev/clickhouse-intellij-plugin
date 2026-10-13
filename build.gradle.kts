@@ -14,6 +14,7 @@ sqlDialectPlugin {
             "brikk-sql-metadata-jvmMain-${brikk.sql.core.get()}.jar",
             "brikk-sql-intellij-support-${brikk.sql.intellij.support.get()}.jar",
             "brikk-sql-verify-api-${brikk.sql.core.get()}.jar",
+            "brikk-sql-verify-clickhouse-${brikk.sql.core.get()}.jar",
         )
     }
     requiredNotices = listOf("brikk-sql-intellij-support", "brikk-sql-metadata", "Apache License 2.0")
@@ -23,5 +24,6 @@ dependencies {
     implementation(libs.brikk.sql.jvm)
     implementation(libs.brikk.sql.metadata.jvm)
     implementation(libs.brikk.sql.intellij.support)
+    implementation("dev.brikk.house:brikk-sql-verify-clickhouse:${libs.versions.brikk.sql.core.get()}")
     testImplementation(libs.brikk.sql.intellij.test.support)
 }
