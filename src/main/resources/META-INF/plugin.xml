@@ -47,6 +47,7 @@
     <extensions defaultExtensionNs="com.intellij.database">
         <dbms id="CLICKHOUSE_BRIKK" instance="dev.sort.clickhouse.ClickHouseDbms.CLICKHOUSE_BRIKK"/>
         <extensionFallback dbms="CLICKHOUSE_BRIKK" fallbackDbms="CLICKHOUSE"/>
+        <definitionProvider dbms="CLICKHOUSE_BRIKK" implementationClass="dev.sort.clickhouse.catalog.ClickHouseDefinitionProvider"/>
         <driversConfig config="config/clickhouse-drivers.xml"/>
         <connectionInterceptor implementation="dev.sort.clickhouse.catalog.ClickHouseHarvestConnectionInterceptor"/>
     </extensions>

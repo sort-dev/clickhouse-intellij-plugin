@@ -10,6 +10,10 @@ import com.intellij.database.dataSource.LocalDataSourceManager
 import com.intellij.database.dataSource.connection.ConnectionRequestor
 import com.intellij.database.dialects.DatabaseDialects
 import com.intellij.database.model.ObjectKind
+import com.intellij.database.model.ModelFactory
+import com.intellij.database.model.DasObject
+import com.intellij.database.dialects.clickhouse.model.CHouseRoot
+import com.intellij.util.PairConsumer
 import com.intellij.database.util.ObjectPath
 import com.intellij.database.util.SearchPath
 import com.intellij.database.remote.jdbc.helpers.JdbcNativeUtil
@@ -25,6 +29,7 @@ import dev.brikk.house.sql.intellij.catalog.CatalogRowSource
 import dev.brikk.house.sql.intellij.testing.JdbcCatalogRows
 import dev.sort.clickhouse.catalog.ClickHouseCatalogHarvester
 import dev.sort.clickhouse.catalog.ClickHouseLiveCatalogService
+import dev.sort.clickhouse.catalog.ClickHouseDefinitionProvider
 import dev.sort.clickhouse.sql.ClickHouseCompletionProfile
 import dev.brikk.house.sql.intellij.catalog.CatalogSource
 import dev.brikk.house.sql.intellij.catalog.RefreshOutcome
@@ -97,10 +102,14 @@ class ClickHouseServerVerificationTest : ClickHousePlatformTestCase() {
         }
         adminQuery("CREATE USER $user IDENTIFIED WITH plaintext_password BY '$password'")
         Disposer.register(testRootDisposable) { adminQuery("DROP USER IF EXISTS $user") }
-        adminQuery("GRANT SELECT, INSERT, FILE, S3 ON *.* TO $user")
+        adminQuery("GRANT SELECT, INSERT, FILE, S3, SHOW TABLES, SHOW DICTIONARIES ON *.* TO $user")
         val namespace = "ch2_namespace_$suffix"
         adminQuery("CREATE DATABASE $namespace")
         Disposer.register(testRootDisposable) { adminQuery("DROP DATABASE IF EXISTS $namespace") }
+        adminQuery("CREATE TABLE $namespace.definition_table (id UInt64, value String) ENGINE=Memory")
+        adminQuery("CREATE VIEW $namespace.definition_view AS SELECT id, value FROM $namespace.definition_table")
+        adminQuery("CREATE MATERIALIZED VIEW $namespace.definition_mv ENGINE=Memory AS SELECT id, value FROM $namespace.definition_table")
+        adminQuery("CREATE DICTIONARY $namespace.definition_dictionary (id UInt64, value String) PRIMARY KEY id SOURCE(CLICKHOUSE(HOST '127.0.0.1' PORT 9000 USER 'default' DB '$namespace' TABLE 'definition_table')) LAYOUT(HASHED()) LIFETIME(0)")
 
         val jar = Path.of(System.getenv("BRIKK_CLICKHOUSE_DRIVER") ?: System.getProperty("clickhouse.driver.fixture"))
         assertTrue("Missing driver fixture: $jar", Files.isRegularFile(jar))
@@ -138,6 +147,21 @@ class ClickHouseServerVerificationTest : ClickHousePlatformTestCase() {
                 if (!refresh.isDone) refresh.cancel(true)
             }
             assertTrue(live.selection(source).source is CatalogSource.Live)
+            val model = ModelFactory.BLACK_HOLE.createModel(ClickHouseDbms.CLICKHOUSE_BRIKK)
+            val schema = (model.root as CHouseRoot).schemas.createOrGet(namespace)
+            val definitions = listOf(
+                schema to "CREATE DATABASE",
+                schema.tables.createOrGet("definition_table") to "CREATE TABLE",
+                schema.views.createOrGet("definition_view") to "CREATE VIEW",
+                schema.matViews.createOrGet("definition_mv") to "CREATE MATERIALIZED VIEW",
+                schema.tables.createOrGet("definition_dictionary").apply { engine = "Dictionary" } to "CREATE DICTIONARY",
+            )
+            val loaded = linkedMapOf<DasObject, Any>()
+            ClickHouseDefinitionProvider().fetchSources(definitions.map { it.first }, it.get(), PairConsumer { obj, text -> loaded[obj] = text })
+            for ((obj, prefix) in definitions) {
+                val definition = loaded[obj]
+                assertTrue("$obj returned $definition", definition is String && definition.startsWith(prefix))
+            }
             val dialect = requireNotNull(DatabaseDialects.findByDbms(ClickHouseDbms.CLICKHOUSE_BRIKK))
             val path = SearchPath.of(ObjectPath.create(namespace, ObjectKind.SCHEMA))
             val use = requireNotNull(dialect.sqlSetSearchPath(path))

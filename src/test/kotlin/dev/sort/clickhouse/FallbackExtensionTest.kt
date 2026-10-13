@@ -7,7 +7,6 @@ class FallbackExtensionTest : ClickHousePlatformTestCase() {
         val allowed = mapOf(
             "com.intellij.database.dataImporter" to "Stock ClickHouse import formats and target types are native to this DBMS.",
             "com.intellij.database.databaseViewStructureExtension" to "Stock ClickHouse tree grouping matches the inherited model.",
-            "com.intellij.database.definitionProvider" to "Generic definition lookup complements stock ClickHouse source loading.",
             "com.intellij.database.dialect" to "Wire SQL must use stock ClickHouse quoting, paging and namespace switching.",
             "com.intellij.database.dmlHelper" to "Stock ClickHouse grid DML policies match the target engine.",
             "com.intellij.database.domainRegistry" to "Stock ClickHouse domains belong to its type system.",
