@@ -56,6 +56,15 @@ Brikk fixtures cover contract completion/navigation, nullable PIPE output,
 hidden aliases, missing-column ranges, CTE projection and SELECT-first PIPE.
 Suggested applicability additions are `ordinary-alias`, `alias-hides-slot`,
 `ordinary-missing`, `cte-projection`, `pipe-where` and `select-first-pipe`.
+
+### Working-plugin compatibility gate
+
+Plugin Verifier 1.410 reports Compatible on DataGrip 261.24374.56 and
+262.10315.132, and IDEA 262.10968.63, 263.4732.28 and 263.5701.42.
+The shared adapters account for 15 internal API usages in `GenericJdbcIntrospectorGate`,
+574 experimental usages and 6–7 deprecated/removal usages. The connection-interceptor
+delegating stubs are documented in the shared support README. No compatibility,
+structure or dependency failures were reported; these API-usage notices remain visible.
 Enable **ClickHouse PIPE support** under Settings > Tools > ClickHouse PIPE.
 PIPE defaults off; `-Dclickhouse.pipes=false` vetoes it. SELECT-first and FROM-first
 pipelines use shared Execute, preview, run-to-stage, completion and coloring.
