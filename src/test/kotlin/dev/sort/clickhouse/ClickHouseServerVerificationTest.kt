@@ -15,6 +15,7 @@ import com.intellij.database.util.SearchPath
 import com.intellij.database.remote.jdbc.helpers.JdbcNativeUtil
 import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.components.service
 import com.intellij.openapi.util.Disposer
 import com.intellij.util.ui.classpath.SimpleClasspathElementFactory
 import com.intellij.testFramework.PlatformTestUtil
@@ -23,6 +24,10 @@ import dev.brikk.house.sql.intellij.catalog.HelperConnectionPoint
 import dev.brikk.house.sql.intellij.catalog.CatalogRowSource
 import dev.brikk.house.sql.intellij.testing.JdbcCatalogRows
 import dev.sort.clickhouse.catalog.ClickHouseCatalogHarvester
+import dev.sort.clickhouse.catalog.ClickHouseLiveCatalogService
+import dev.sort.clickhouse.sql.ClickHouseCompletionProfile
+import dev.brikk.house.sql.intellij.catalog.CatalogSource
+import dev.brikk.house.sql.intellij.catalog.RefreshOutcome
 import dev.brikk.house.sql.metadata.FunctionKind
 import dev.brikk.house.sql.verify.VerifyResult
 import dev.sort.clickhouse.sql.ClickHouseDialect
@@ -124,6 +129,15 @@ class ClickHouseServerVerificationTest : ClickHousePlatformTestCase() {
             DatabaseConnectionManager.getInstance().build(project, point).setRequestor(ConnectionRequestor.Anonymous()).setAskPassword(false).create()
         }
         requireNotNull(session).use {
+            val live = ApplicationManager.getApplication().service<ClickHouseLiveCatalogService>()
+            val refresh = ApplicationManager.getApplication().executeOnPooledThread(Callable { runBlocking { live.refresh(project, source) } })
+            try {
+                PlatformTestUtil.waitWithEventsDispatching("ClickHouse live function inventory", { refresh.isDone }, 30)
+                assertTrue(refresh.get(1, TimeUnit.SECONDS).toString(), refresh.get() is RefreshOutcome.Refreshed)
+            } finally {
+                if (!refresh.isDone) refresh.cancel(true)
+            }
+            assertTrue(live.selection(source).source is CatalogSource.Live)
             val dialect = requireNotNull(DatabaseDialects.findByDbms(ClickHouseDbms.CLICKHOUSE_BRIKK))
             val path = SearchPath.of(ObjectPath.create(namespace, ObjectKind.SCHEMA))
             val use = requireNotNull(dialect.sqlSetSearchPath(path))
@@ -155,6 +169,7 @@ class ClickHouseServerVerificationTest : ClickHousePlatformTestCase() {
             for (sql in statements) {
                 val file = myFixture.configureByText("server-$suffix.sql", sql)
                 setSqlDialectMapping(project, file.virtualFile, ClickHouseDialect)
+                assertContainsElements(ClickHouseCompletionProfile.functions(myFixture.file).map { it.name }, "toDateTime", "numbers", "s3")
                 assertFalse(password in source.url.orEmpty())
                 val validator = requireNotNull(ClickHouseNativeErrorProfile.validator(myFixture.file))
                 val checkedSql = ClickHouseNativeErrorProfile.verificationText(myFixture.file, sql.removeSuffix(";"))

@@ -9,14 +9,12 @@ The driver uses ClickHouse's [documented JDBC facade](https://clickhouse.com/doc
 itself. Database Tools manages the stock `ClickHouse` artifact's version and
 packaging; no separate JDBC implementation is bundled or pinned by this plugin.
 
-CH.2 live catalog activation is pending shared `LiveCatalogProfile.connectionProperties(dataSource)`
-and on-connect transaction guards. The read-only scalar/aggregate/table-function harvester is tested,
-but completion still uses bundled metadata. Shared `definitionQuery("clickhouse", ...)` and
-`DefinedObject.DICTIONARY` are also missing; no local SHOW CREATE implementation is substituted.
-The needed core API is `definitionQuery("clickhouse", kind, path)`: TABLE/VIEW use
-SHOW CREATE TABLE/VIEW, MATERIALIZED_VIEW uses SHOW CREATE TABLE, DICTIONARY uses
-SHOW CREATE DICTIONARY, and SCHEMA uses SHOW CREATE DATABASE, quoting each path part.
-These forms were checked on ClickHouse 26.9; SHOW CREATE MATERIALIZED VIEW is rejected.
+On connection, read-only system-catalog queries refresh scalar, aggregate and table
+function names. Completion chooses live inventory, then identity-keyed disk cache,
+then bundled metadata. Missing signatures are not invented. Refresh ClickHouse
+Catalog updates it manually; function DDL schedules refreshes. Session facts stay
+in memory, never in the disk cache. Helpers disable compression without changing
+the data source. ClickHouse's client transaction flag is not treated as a real transaction.
 Database switching and console namespace read-back retain stock ClickHouse behavior.
 With JDBC 0.9.8, raw USE does not persist across HTTP requests; the stock namespace picker uses JDBC setSchema.
 The shared one-level auto-introspection kit loads a listed database when completion

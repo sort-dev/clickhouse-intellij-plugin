@@ -26,6 +26,8 @@
         <completion.contributor language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.pipe.ClickHouseStageCompletion" order="first, before clickhouse.metadata"/>
         <completion.contributor language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.catalog.ClickHouseQualifiedPathIntrospectContributor" order="first, before clickhouse.metadata"/>
         <editorNotificationProvider implementation="dev.sort.clickhouse.catalog.ClickHouseIntrospectBannerProvider"/>
+        <postStartupActivity implementation="dev.sort.clickhouse.catalog.ClickHouseExecutionObserverStartup"/>
+        <notificationGroup id="ClickHouse catalog" displayType="BALLOON"/>
         <annotator language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.pipe.ClickHouseStageAnnotator"/>
         <dynamicActionConfigurationCustomizer implementation="dev.sort.clickhouse.pipe.ClickHouseExecuteConfiguration"/>
         <actionPromoter implementation="dev.sort.clickhouse.pipe.ClickHouseExecutePromoter" order="first"/>
@@ -46,8 +48,13 @@
         <dbms id="CLICKHOUSE_BRIKK" instance="dev.sort.clickhouse.ClickHouseDbms.CLICKHOUSE_BRIKK"/>
         <extensionFallback dbms="CLICKHOUSE_BRIKK" fallbackDbms="CLICKHOUSE"/>
         <driversConfig config="config/clickhouse-drivers.xml"/>
+        <connectionInterceptor implementation="dev.sort.clickhouse.catalog.ClickHouseHarvestConnectionInterceptor"/>
     </extensions>
     <actions>
+        <action id="ClickHouse.RefreshCatalog" class="dev.sort.clickhouse.catalog.ClickHouseRefreshCatalogAction"
+                text="Refresh ClickHouse Catalog" description="Read function names from the connected ClickHouse system catalog">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </action>
         <group id="ClickHousePipe.EditorMenu" text="ClickHouse PIPE" popup="true">
             <add-to-group group-id="EditorPopupMenu" anchor="first"/>
             <action id="ClickHousePipe.Preview" class="dev.sort.clickhouse.pipe.ClickHousePreviewAction" text="Preview Generated SQL"/>
@@ -55,7 +62,13 @@
         </group>
     </actions>
     <applicationListeners>
+        <listener class="dev.sort.clickhouse.catalog.ClickHouseLiveCatalogCleanup"
+                  topic="com.intellij.database.dataSource.DataSourceStorage$Listener"/>
         <listener class="dev.sort.clickhouse.validation.ClickHouseVerificationConnectionListener"
                   topic="com.intellij.database.dataSource.DatabaseConnectionManager$Listener"/>
     </applicationListeners>
+    <projectListeners>
+        <listener class="dev.sort.clickhouse.catalog.ClickHouseLiveCatalogCleanup"
+                  topic="com.intellij.database.dataSource.DataSourceStorage$Listener"/>
+    </projectListeners>
 </idea-plugin>

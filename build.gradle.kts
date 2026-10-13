@@ -49,6 +49,7 @@ tasks.withType<Test>().configureEach {
         exclude("**/ClickHouseServerVerificationTest.class")
     }
     systemProperty("clickhouse.driver.fixture", layout.buildDirectory.file("clickhouse-driver/clickhouse-jdbc-0.9.8-all.jar").get().asFile.absolutePath)
+    systemProperty("clickhouse.catalog.fixture", layout.buildDirectory.dir("catalog-tests").get().asFile.absolutePath)
     for (name in listOf("BRIKK_CLICKHOUSE_URL", "BRIKK_CLICKHOUSE_DRIVER", "BRIKK_CLICKHOUSE_CONTAINER")) {
         providers.environmentVariable(name).orNull?.let { environment(name, it) }
     }
