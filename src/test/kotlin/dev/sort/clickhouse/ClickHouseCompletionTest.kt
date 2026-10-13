@@ -4,8 +4,10 @@ import com.intellij.codeInsight.CodeInsightSettings
 import com.intellij.codeInsight.lookup.Lookup
 import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.psi.PsiManager
+import com.intellij.sql.dialects.BuiltinFunction
 import dev.brikk.house.sql.intellij.testing.setSqlDialectMapping
 import dev.brikk.house.sql.metadata.FunctionPresentation
+import dev.brikk.house.sql.metadata.FunctionKind
 import dev.sort.clickhouse.sql.ClickHouseDialect
 
 class ClickHouseCompletionTest : ClickHousePlatformTestCase() {
@@ -64,6 +66,42 @@ class ClickHouseCompletionTest : ClickHousePlatformTestCase() {
     }
 
     fun testScalarFunctionsAreNotOfferedAsTables() {
-        assertEmpty(complete("SELECT * FROM toDa<caret>").filter { it.`object` is FunctionPresentation })
+        assertEmpty(complete("SELECT * FROM toDa<caret>").filter { (it.`object` as? FunctionPresentation)?.kind == FunctionKind.SCALAR })
+    }
+
+    fun testTableFunctionsInsertFromMetadataInFromPosition() {
+        for (name in listOf("numbers", "s3", "file", "url", "remote")) {
+            assertEquals("SELECT * FROM $name(<caret>)", insertFunction("SELECT * FROM $name<caret>", name))
+        }
+    }
+
+    fun testTableFunctionsDoNotLeakIntoSelectExpressions() {
+        assertEmpty(complete("SELECT num<caret>").filter { (it.`object` as? FunctionPresentation)?.name == "numbers" })
+    }
+
+    fun testStockAndMetadataToDateTimeProduceOneCandidate() {
+        val items = complete("SELECT toDateTi<caret>").filter { it.lookupString.equals("toDateTime", true) }
+        assertEquals(listOf("toDateTime"), items.map { it.lookupString })
+        assertTrue(items.single().`object` is FunctionPresentation)
+    }
+
+    fun testFunctionsAreAbsentInsideStringsCommentsAndInlineData() {
+        for (sql in listOf(
+            "SELECT 'toDa<caret>'", "SELECT 1 /* toDa<caret> */", "SELECT 1 -- toDa<caret>",
+            "FROM events |> SELECT 'toDa<caret>'",
+            "INSERT INTO events FORMAT JSONEachRow\n{\"message\":\"toDa<caret>\"}\n;",
+            "INSERT INTO events FORMAT CSV\n1,toDa<caret>\n;",
+        )) {
+            assertEmpty(sql, complete(sql).filter { it.`object` is FunctionPresentation || it.`object` is BuiltinFunction.Prototype })
+        }
+    }
+
+    fun testPipeQualifierUsesSourceTokensEvenWithoutReferencePsi() {
+        assertEmpty(complete("FROM events |> WHERE events.toDa<caret>")
+            .filter { it.`object` is FunctionPresentation || it.`object` is BuiltinFunction.Prototype })
+    }
+
+    fun testInternalFunctionsAreNotInTheMetadataCandidates() {
+        assertEmpty(complete("SELECT __<caret>").filter { (it.`object` as? FunctionPresentation)?.name?.startsWith("__") == true })
     }
 }
