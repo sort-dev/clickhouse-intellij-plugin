@@ -1,0 +1,11 @@
+<drivers>
+    <driver id="clickhouse-sortdev" name="ClickHouse (sort.dev)" dialect="ClickHouseSQL"
+            forced-dbms="CLICKHOUSE_BRIKK" default-driver-class="com.clickhouse.jdbc.ClickHouseDriver"
+            icon="AllIcons.Providers.ClickHouse">
+        <url-template name="default" template="jdbc:clickhouse://{host::localhost}?[:{port::8123}][/{database}?][\?&lt;&amp;,user={user},password={password},{:identifier}={:identifier}&gt;]"/>
+        <url-template name="default" template="jdbc:clickhouse://\[{host:ipv6:\:\:1}\][:{port::8123}][/{database}?][\?&lt;&amp;,user={user},password={password},{:identifier}={:identifier}&gt;]"/>
+        <property name="databaseTerm" value="schema"/>
+        <option name="auto-sync" value="true"/>
+        <artifact id="ClickHouse" use="true" rolling="true"/>
+    </driver>
+</drivers>

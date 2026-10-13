@@ -5,12 +5,11 @@ import dev.brikk.house.sql.shape.parseParameterOccurrences
 import junit.framework.TestCase
 
 class QueryParameterTest : TestCase() {
-    fun testKnownTypedParameterClassificationGap() {
+    fun testTypedAndIdeParametersStayDistinct() {
         val sql = "SELECT {id:UInt64}, :other FROM {table:Identifier}"
         val parameters = parseParameterOccurrences(sql, "clickhouse")
         assertEquals(listOf("{id:UInt64}", ":other", "{table:Identifier}"), parameters.map { sql.substring(it.range.start, it.range.end) })
         assertEquals(listOf("id", "other", "table"), parameters.map { it.name })
-        // The shared PIPE default would prompt for native typed parameters as IDE colon binds.
-        assertEquals(listOf(ParamStyle.NAMED_COLON, ParamStyle.NAMED_COLON, ParamStyle.NAMED_COLON), parameters.map { it.style })
+        assertEquals(listOf(ParamStyle.NAMED_TYPED, ParamStyle.NAMED_COLON, ParamStyle.NAMED_TYPED), parameters.map { it.style })
     }
 }

@@ -11,5 +11,7 @@ class PluginLoadTest : ClickHousePlatformTestCase() {
         assertTrue(descriptor.isEnabled)
         assertNotNull(Dialects.forName("clickhouse"))
         assertEquals("clickhouse", SqlDialectRegistry.forLanguageId("ClickHouse")?.coreDialect)
+        assertEquals("clickhouse", SqlDialectRegistry.forLanguageId("ClickHouseSQL")?.coreDialect)
+        assertEquals("clickhouse", SqlDialectRegistry.forDbms(ClickHouseDbms.CLICKHOUSE_BRIKK)?.coreDialect)
     }
 }

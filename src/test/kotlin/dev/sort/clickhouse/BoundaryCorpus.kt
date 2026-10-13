@@ -1,7 +1,7 @@
 package dev.sort.clickhouse
 
-internal data class BoundaryCase(val name: String, val statements: List<String>) {
-    val sql: String = statements.joinToString("\n")
+internal data class BoundaryCase(val name: String, val statements: List<String>, val separator: String = "\n") {
+    val sql: String = statements.joinToString(separator)
 }
 
 internal val boundaryCorpus = listOf(
@@ -72,5 +72,7 @@ internal val boundaryCorpus = listOf(
     BoundaryCase("semicolons in trivia", listOf("SELECT 'a; b' /* ; SELECT 9 */ AS value -- ; SELECT 8\nFROM events;")),
     BoundaryCase("multiple statements", listOf("SELECT ';' AS value;", "SELECT /* ; */ 2;", "INSERT INTO FUNCTION null('id UInt64') SELECT 3;")),
     BoundaryCase("values followed by select", listOf("INSERT INTO events FORMAT Values (1, 'x;y');", "SELECT 2;")),
-    BoundaryCase("json followed by select", listOf("INSERT INTO events FORMAT JSONEachRow\n{\"id\":1};", "SELECT 2;")),
+    BoundaryCase("json sql-looking data", listOf("INSERT INTO events FORMAT JSONEachRow\n{\"id\":1};\nSELECT 2;")),
+    BoundaryCase("json terminated before select", listOf("INSERT INTO events FORMAT JSONEachRow\n{\"id\":1}\n;", "SELECT 2;")),
+    BoundaryCase("json blank line before select", listOf("INSERT INTO events FORMAT JSONEachRow\n{\"id\":1}", "SELECT 2;"), separator = "\n\n"),
 )

@@ -2,7 +2,7 @@ package dev.sort.clickhouse
 
 import dev.brikk.house.sql.dialects.Dialects
 import dev.brikk.house.sql.parser.SqlScriptSnapshot
-import dev.brikk.house.sql.parser.pipeStageKeywords
+import dev.brikk.house.sql.intellij.pipe.pipeStagePhrases
 import dev.brikk.house.sql.shape.PipeLowering
 import dev.brikk.house.sql.shape.SqlFragment
 import dev.brikk.house.sql.shape.lowerForExecution
@@ -10,23 +10,24 @@ import junit.framework.TestCase
 
 class PipeLoweringTest : TestCase() {
     fun testCoreStageCoverage() {
-        for (phrase in pipeStageKeywords("clickhouse")) {
+        for (phrase in pipeStagePhrases("clickhouse")) {
             val input = "FROM events |> $phrase ${stageTail(phrase)}"
             val lowered = lowerForExecution(input, "clickhouse")
-            when (phrase) {
-                "PIVOT", "UNPIVOT" -> {
-                    assertTrue("$input: $lowered", lowered is PipeLowering.Ok)
-                    assertTrue(input, (lowered as PipeLowering.Ok).blockers.isNotEmpty())
-                }
-                // Core advertises this phrase but its ClickHouse parser refuses it.
-                "NATURAL JOIN" -> assertTrue("$input: $lowered", lowered is PipeLowering.Refused)
-                else -> {
-                    assertTrue("$input: $lowered", lowered is PipeLowering.Ok)
-                    lowered as PipeLowering.Ok
-                    assertTrue("$input: ${lowered.blockers}", lowered.blockers.isEmpty())
-                    assertFalse(input, SqlFragment(lowered.sql, "clickhouse").containsPipe)
-                    assertEquals(input, 1, Dialects.forName("clickhouse").parse(lowered.sql).filterNotNull().size)
-                }
+            assertTrue("$input: $lowered", lowered is PipeLowering.Ok)
+            lowered as PipeLowering.Ok
+            assertTrue("$input: ${lowered.blockers}", lowered.blockers.isEmpty())
+            assertFalse(input, SqlFragment(lowered.sql, "clickhouse").containsPipe)
+            assertEquals(input, 1, Dialects.forName("clickhouse").parse(lowered.sql).filterNotNull().size)
+        }
+    }
+
+    fun testUnsupportedStagesRefuseOrBlockExecution() {
+        for (stage in listOf("CALL", "RENAME", "NATURAL JOIN", "STRAIGHT_JOIN", "PIVOT", "UNPIVOT")) {
+            val tail = if (stage == "STRAIGHT_JOIN") "events AS other ON events.id = other.id" else stageTail(stage)
+            when (val lowered = lowerForExecution("FROM events |> $stage $tail", "clickhouse")) {
+                is PipeLowering.Refused -> Unit
+                is PipeLowering.Ok -> assertTrue(stage, lowered.blockers.isNotEmpty())
+                PipeLowering.NotPipe -> fail("$stage must not pass through as SQL")
             }
         }
     }
@@ -55,6 +56,7 @@ class PipeLoweringTest : TestCase() {
 
     private fun stageTail(phrase: String): String = when {
         phrase.endsWith("JOIN") -> when {
+            phrase == "ARRAY JOIN" -> "tags AS tag"
             phrase.startsWith("CROSS") || phrase.startsWith("NATURAL") -> "events AS other"
             else -> "events AS other ON events.id = other.id"
         }

@@ -4,8 +4,22 @@
     <vendor url="https://sort.dev" email="jayson@sort.dev">Sortdev SRL</vendor>
     <description><![CDATA[
         <p>ClickHouse SQL editing built on the Brikk SQL shared libraries.</p>
-        <p>Development scaffold. Custom dialect and PIPE integration are not enabled yet.</p>
+        <p>ClickHouse statement boundaries and native Database Tools integration.</p>
     ]]></description>
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.database</depends>
+    <extensions defaultExtensionNs="com.intellij">
+        <sql.dialect dbms="CLICKHOUSE_BRIKK" implementationClass="dev.sort.clickhouse.sql.ClickHouseDialect" order="first"/>
+        <lang.parserDefinition language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.sql.ClickHouseParserDefinition"/>
+        <lang.syntaxHighlighterFactory language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.sql.ClickHouseSyntaxHighlighterFactory"/>
+        <lang.commenter language="ClickHouseSQL" implementationClass="com.intellij.database.sql.common.core.psi.impl.support.SqlNestedCommenter"/>
+        <lang.quoteHandler language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.sql.ClickHouseQuoteHandler"/>
+        <highlightErrorFilter implementation="dev.sort.clickhouse.sql.ClickHouseErrorFilter"/>
+        <annotator language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.sql.ClickHouseMaskedSpanAnnotator"/>
+    </extensions>
+    <extensions defaultExtensionNs="com.intellij.database">
+        <dbms id="CLICKHOUSE_BRIKK" instance="dev.sort.clickhouse.ClickHouseDbms.CLICKHOUSE_BRIKK"/>
+        <extensionFallback dbms="CLICKHOUSE_BRIKK" fallbackDbms="CLICKHOUSE"/>
+        <driversConfig config="config/clickhouse-drivers.xml"/>
+    </extensions>
 </idea-plugin>

@@ -45,8 +45,8 @@ class StockBoundaryTest : ClickHousePlatformTestCase() {
                         case.sql.substring(case.sql.indexOf("SELECT * FROM logs")).removeSuffix(";"),
                     )
                     // Stock treats everything after JSONEachRow as data, including the next SELECT.
-                    "json data tail", "json followed by select" -> listOf(case.sql)
-                    else -> case.statements.map { it.removeSuffix(";") }
+                    "json data tail", "json sql-looking data" -> listOf(case.sql)
+                    else -> case.statements.map { it.removeSuffix(";").trimEnd() }
                 }
                 if (stock != expected) {
                     add("${case.name}:\nexpected=$expected\nstock=$stock")
