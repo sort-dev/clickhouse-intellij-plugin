@@ -26,8 +26,8 @@ class ClickHouseVerificationTextTest : TestCase() {
         assertEquals(sql.replace("SELECT ?", "SELECT 0"), maskClickHouseIdeBinds(sql))
     }
 
-    fun testQuestionCastWithoutScannerProofWithholdsVerdict() {
-        assertNull(maskClickHouseIdeBinds("SELECT ?::UInt64"))
+    fun testQuestionCastMasksOnlyTheProvenBind() {
+        assertEquals("SELECT 0::UInt64", maskClickHouseIdeBinds("SELECT ?::UInt64"))
     }
 
     fun testMixedTernaryAndIdeBindsOnlyMaskTheBinds() {

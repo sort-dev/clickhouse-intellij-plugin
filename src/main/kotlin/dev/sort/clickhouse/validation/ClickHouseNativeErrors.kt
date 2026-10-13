@@ -15,9 +15,6 @@ import dev.brikk.house.sql.intellij.pipe.isEnabled
 import dev.brikk.house.sql.parser.ParseError
 import dev.brikk.house.sql.parser.SqlStatementRange
 import dev.brikk.house.sql.parser.TokenError
-import dev.brikk.house.sql.parser.TokenType
-import dev.brikk.house.sql.parser.Tokenizer
-import dev.brikk.house.sql.parser.TokenizerConfigs
 import dev.brikk.house.sql.shape.ParamStyle
 import dev.brikk.house.sql.shape.ShapeError
 import dev.brikk.house.sql.shape.SqlScriptParameters
@@ -69,9 +66,6 @@ class ClickHouseVerificationConnectionListener : VerificationConnectionListener(
 internal fun maskClickHouseIdeBinds(sql: String): String? {
     val parameters = SqlScriptParameters.parse(sql, "clickhouse", positional = true, checkCanceled = ProgressManager::checkCanceled)
     if (parameters.failureOffset != null || parameters.ambiguous.isNotEmpty()) return null
-    // The published scanner does not yet classify the leading '?' in QDCOLON (?::).
-    val tokens = Tokenizer(TokenizerConfigs.forName("clickhouse")).tokenizeForEditor(sql, ProgressManager::checkCanceled).tokens
-    if (tokens.any { it.tokenType == TokenType.QDCOLON }) return null
     val binds = parameters.occurrences.filter { it.style == ParamStyle.NAMED_COLON || it.style == ParamStyle.POSITIONAL }
     if (binds.isEmpty()) return sql
     val masked = StringBuilder(sql).apply {

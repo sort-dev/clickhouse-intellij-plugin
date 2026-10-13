@@ -81,6 +81,9 @@ class ClickHouseNativeDiagnosticsTest : ClickHousePlatformTestCase() {
         val verifier = RecordingVerifier { VerifyResult.Accepted }
         annotations(sql, verifier)
         assertEquals(listOf("SELECT 0     , 0, {server:UInt64}"), verifier.asked.toList())
+        val cast = RecordingVerifier { VerifyResult.Accepted }
+        annotations("SELECT ?::UInt64", cast)
+        assertEquals(listOf("SELECT 0::UInt64"), cast.asked.toList())
     }
 
     fun testUncertainMasksNeverAskTheVerifierOrClearLocalErrors() {
