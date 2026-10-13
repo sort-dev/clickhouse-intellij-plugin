@@ -2,7 +2,7 @@ package dev.sort.clickhouse
 
 import dev.brikk.house.sql.dialects.Dialects
 import dev.brikk.house.sql.parser.SqlScriptSnapshot
-import dev.brikk.house.sql.intellij.pipe.pipeStagePhrases
+import dev.brikk.house.sql.parser.pipeRunnableStageKeywords
 import dev.brikk.house.sql.shape.PipeLowering
 import dev.brikk.house.sql.shape.SqlFragment
 import dev.brikk.house.sql.shape.lowerForExecution
@@ -10,7 +10,7 @@ import junit.framework.TestCase
 
 class PipeLoweringTest : TestCase() {
     fun testCoreStageCoverage() {
-        for (phrase in pipeStagePhrases("clickhouse")) {
+        for (phrase in pipeRunnableStageKeywords("clickhouse")) {
             val input = "FROM events |> $phrase ${stageTail(phrase)}"
             val lowered = lowerForExecution(input, "clickhouse")
             assertTrue("$input: $lowered", lowered is PipeLowering.Ok)

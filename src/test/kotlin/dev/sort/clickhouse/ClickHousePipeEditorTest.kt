@@ -7,15 +7,20 @@ import com.intellij.lang.LanguageAnnotators
 import com.intellij.lang.annotation.AnnotationSession
 import com.intellij.openapi.util.TextRange
 import com.intellij.testFramework.IndexingTestUtil
+import com.intellij.testFramework.DumbModeTestUtils
 import dev.sort.clickhouse.pipe.ClickHousePipeDialect
 import dev.sort.clickhouse.pipe.ClickHousePreviewIntention
 import dev.sort.clickhouse.pipe.ClickHouseStageAnnotator
-import dev.brikk.house.sql.intellij.pipe.pipeStagePhrases
+import dev.brikk.house.sql.parser.pipeRunnableStageKeywords
 
 class ClickHousePipeEditorTest : ClickHousePipeTestCase() {
     private fun complete(sql: String): List<String> {
         open(sql)
         IndexingTestUtil.waitUntilIndexesAreReady(project)
+        return completeCurrent()
+    }
+
+    private fun completeCurrent(): List<String> {
         val codeInsight = CodeInsightSettings.getInstance()
         val previous = codeInsight.AUTOCOMPLETE_ON_CODE_COMPLETION
         codeInsight.AUTOCOMPLETE_ON_CODE_COMPLETION = false
@@ -30,7 +35,17 @@ class ClickHousePipeEditorTest : ClickHousePipeTestCase() {
     fun testOnlyRunnableClickHouseStagesAreOffered() {
         for (sql in listOf("FROM events |> <caret>", "SELECT * FROM (FROM events |> <caret>) AS p")) {
             val items = complete(sql)
-            assertSameElements(items, pipeStagePhrases("clickhouse"))
+            assertSameElements(items, pipeRunnableStageKeywords("clickhouse"))
+            assertDoesntContain(items, "NATURAL JOIN", "PIVOT")
+        }
+    }
+
+    fun testPipeStagesCompleteDuringIndexing() {
+        open("FROM events |> <caret>")
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
+        DumbModeTestUtils.runInDumbModeSynchronously(project) {
+            val items = completeCurrent()
+            assertSameElements(items, pipeRunnableStageKeywords("clickhouse"))
             assertDoesntContain(items, "NATURAL JOIN", "PIVOT")
         }
     }
