@@ -1,6 +1,7 @@
 package dev.sort.clickhouse.brikk.kotlin
 
 import com.intellij.openapi.util.TextRange
+import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiLanguageInjectionHost
 import dev.brikk.house.intellij.BrikkDialect
 import dev.brikk.house.intellij.BrikkHosts
@@ -15,7 +16,7 @@ import dev.sort.clickhouse.brikk.ClickHouseHostSql
 import dev.sort.clickhouse.sql.ClickHouseDialect
 import org.jetbrains.kotlin.psi.KtStringTemplateExpression
 
-internal data class ClickHouseBrikkHostData(val cause: BrikkPendingCause?)
+internal data class ClickHouseBrikkHostData(val project: Project, val cause: BrikkPendingCause?)
 
 class ClickHouseBrikkInjector : HostSqlInjector(ClickHouseHostSql, ClickHouseDialect) {
     override val prefix = "-- dialect: clickhouse\n"
@@ -23,6 +24,7 @@ class ClickHouseBrikkInjector : HostSqlInjector(ClickHouseHostSql, ClickHouseDia
     override fun claim(host: PsiLanguageInjectionHost): HostSqlClaim {
         if (host !is KtStringTemplateExpression) return HostSqlClaim.NotClaimed
         val state = BrikkHosts.state(host)
+        updateClickHouseBrikkBanner(host.containingFile)
         if (state.dialect != BrikkDialect.CLICKHOUSE) return HostSqlClaim.NotClaimed
         val context = when (state) {
             is BrikkHostState.Recognized -> state.context
@@ -42,7 +44,7 @@ class ClickHouseBrikkInjector : HostSqlInjector(ClickHouseHostSql, ClickHouseDia
         return HostSqlClaim.Injected(
             ClickHouseDialect, HostSqlEntries(entries, trims), pending = state is BrikkHostState.Pending,
             inspectionOnly = true, colonBinds = true,
-            data = ClickHouseBrikkHostData((state as? BrikkHostState.Pending)?.cause),
+            data = ClickHouseBrikkHostData(host.project, (state as? BrikkHostState.Pending)?.cause),
         )
     }
 }

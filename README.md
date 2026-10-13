@@ -45,6 +45,10 @@ Shared relation analysis combines Brikk `Rel<T>` contracts with physical datasou
 facts for column completion, resolve, diagnostics and navigation to Kotlin properties.
 Brikk and pending Brikk views are inspection-only: direct Execute and run-to-stage
 are blocked; preview is marked inspection-only. Execute them through the Brikk runtime.
+Brikk strings have a bricks gutter marker. Pending markers show the typed cause
+when the shared host claim carries it. Cold pending claims currently have only
+a generic recognition status because the shared unavailable claim has no typed payload.
+Editor action banners come only from the shared helper's `BrikkHosts.actionNeeded`.
 Enable **ClickHouse PIPE support** under Settings > Tools > ClickHouse PIPE.
 PIPE defaults off; `-Dclickhouse.pipes=false` vetoes it. SELECT-first and FROM-first
 pipelines use shared Execute, preview, run-to-stage, completion and coloring.

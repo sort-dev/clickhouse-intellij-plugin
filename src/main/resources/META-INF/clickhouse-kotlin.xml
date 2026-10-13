@@ -7,5 +7,7 @@
         <languageInjectionContributor language="kotlin" implementationClass="dev.sort.clickhouse.brikk.kotlin.ClickHouseBrikkInjector" order="first"/>
         <languageInjectionPerformer language="kotlin" implementationClass="dev.sort.clickhouse.brikk.kotlin.ClickHouseBrikkInjector" order="first"/>
         <externalAnnotator language="kotlin" implementationClass="dev.sort.clickhouse.validation.ClickHouseNativeErrorAnnotator"/>
+        <codeInsight.lineMarkerProvider language="kotlin" implementationClass="dev.sort.clickhouse.brikk.kotlin.ClickHouseBrikkLineMarker"/>
+        <editorNotificationProvider implementation="dev.sort.clickhouse.brikk.kotlin.ClickHouseBrikkActionBanner"/>
     </extensions>
 </idea-plugin>

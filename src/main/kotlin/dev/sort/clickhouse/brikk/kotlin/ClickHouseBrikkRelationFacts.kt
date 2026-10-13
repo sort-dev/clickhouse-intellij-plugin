@@ -18,7 +18,9 @@ private fun brikkFacts(): ExternalRelationFacts {
         ),
         navigationTarget = brikk::navigationTarget,
     ) { file ->
-        when (val result = brikk.facts(file)) {
+        val result = brikk.facts(file)
+        updateClickHouseBrikkBanner(file)
+        when (result) {
             is BrikkRelationFactsResult.Available -> RelationFactsResult.Available(result.facts, result.revision)
             is BrikkRelationFactsResult.Pending -> RelationFactsResult.Pending(result.reason)
             null -> null
