@@ -8,6 +8,11 @@ import com.intellij.database.dataSource.DatabaseDriverManager
 import com.intellij.database.dataSource.LocalDataSource
 import com.intellij.database.dataSource.LocalDataSourceManager
 import com.intellij.database.dataSource.connection.ConnectionRequestor
+import com.intellij.database.dialects.DatabaseDialects
+import com.intellij.database.model.ObjectKind
+import com.intellij.database.util.ObjectPath
+import com.intellij.database.util.SearchPath
+import com.intellij.database.remote.jdbc.helpers.JdbcNativeUtil
 import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.util.Disposer
@@ -88,6 +93,9 @@ class ClickHouseServerVerificationTest : ClickHousePlatformTestCase() {
         adminQuery("CREATE USER $user IDENTIFIED WITH plaintext_password BY '$password'")
         Disposer.register(testRootDisposable) { adminQuery("DROP USER IF EXISTS $user") }
         adminQuery("GRANT SELECT, INSERT, FILE, S3 ON *.* TO $user")
+        val namespace = "ch2_namespace_$suffix"
+        adminQuery("CREATE DATABASE $namespace")
+        Disposer.register(testRootDisposable) { adminQuery("DROP DATABASE IF EXISTS $namespace") }
 
         val jar = Path.of(System.getenv("BRIKK_CLICKHOUSE_DRIVER") ?: System.getProperty("clickhouse.driver.fixture"))
         assertTrue("Missing driver fixture: $jar", Files.isRegularFile(jar))
@@ -116,6 +124,19 @@ class ClickHouseServerVerificationTest : ClickHousePlatformTestCase() {
             DatabaseConnectionManager.getInstance().build(project, point).setRequestor(ConnectionRequestor.Anonymous()).setAskPassword(false).create()
         }
         requireNotNull(session).use {
+            val dialect = requireNotNull(DatabaseDialects.findByDbms(ClickHouseDbms.CLICKHOUSE_BRIKK))
+            val path = SearchPath.of(ObjectPath.create(namespace, ObjectKind.SCHEMA))
+            val use = requireNotNull(dialect.sqlSetSearchPath(path))
+            val statement = requireNotNull(JdbcNativeUtil.computeRemote { it.get().remoteConnection.createStatement() })
+            try {
+                JdbcNativeUtil.computeRemote { statement.execute(use) }
+                println("ClickHouse JDBC 0.9.8 read-back after raw USE: ${dialect.tryToLoadSearchPath(it.get())?.current?.name}")
+                assertTrue(dialect.shouldSwitchThroughJdbc(ObjectKind.SCHEMA))
+                JdbcNativeUtil.computeRemote { it.get().remoteConnection.setSchema(namespace) }
+                assertEquals(namespace, dialect.tryToLoadSearchPath(it.get())?.current?.name)
+            } finally {
+                JdbcNativeUtil.closeRemoteStatementSafe(statement)
+            }
             source.initScript = "INSERT INTO FUNCTION file('$marker-startup.tsv', 'TSV', 'id UInt64') SELECT 7"
             assertTrue(source.url.orEmpty().contains("compress=true"))
             val rejectedSql = "SELECT 'unicode 😀' FRM unknown_table"

@@ -13,6 +13,10 @@ CH.2 live catalog activation is pending shared `LiveCatalogProfile.connectionPro
 and on-connect transaction guards. The read-only scalar/aggregate/table-function harvester is tested,
 but completion still uses bundled metadata. Shared `definitionQuery("clickhouse", ...)` and
 `DefinedObject.DICTIONARY` are also missing; no local SHOW CREATE implementation is substituted.
+Database switching and console namespace read-back retain stock ClickHouse behavior.
+With JDBC 0.9.8, raw USE does not persist across HTTP requests; the stock namespace picker uses JDBC setSchema.
+The shared one-level auto-introspection kit loads a listed database when completion
+needs its children, with targeted refreshes and a per-file progress banner.
 
 The lexer masks the unsupported PARTITION BY clause of INSERT INTO FUNCTION so
 the owner-shaped s3 export keeps structured, error-free stock PSI as one statement.
