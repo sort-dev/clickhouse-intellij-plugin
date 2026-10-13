@@ -15,7 +15,6 @@ import com.intellij.ui.UiInterceptors
 import dev.brikk.house.sql.intellij.CooperativeExecuteAction
 import dev.brikk.house.sql.intellij.catalog.DataSourceResolution
 import dev.brikk.house.sql.intellij.catalog.DialectDataSourceResolver
-import dev.brikk.house.sql.intellij.pipe.NativeVerdict
 import dev.brikk.house.sql.intellij.pipe.PipeExecuteInterceptor
 import dev.brikk.house.sql.intellij.pipe.PipeTranslation
 import dev.brikk.house.sql.intellij.pipe.lower
@@ -70,9 +69,10 @@ class ClickHousePipeParametersTest : ClickHousePipeTestCase() {
         }
     }
 
-    fun testMissingNativeValidatorIsUnavailableNotAccepted() {
+    fun testMissingNativeValidatorHasNoAcceptedVerdict() {
         val translation = ClickHousePipeDialect.lower("SELECT {value:UInt64} AS value |> WHERE value > 0") as PipeTranslation.Lowered
-        assertSame(NativeVerdict.Unavailable, translation.verdict)
+        assertNull(ClickHousePipeDialect.validator)
+        assertNull(translation.verdict)
         assertNull(translation.blocker)
         assertTrue(translation.sql.contains("{value:UInt64}"))
     }

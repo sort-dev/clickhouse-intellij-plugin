@@ -22,7 +22,7 @@ keywords insert UPPER. Missing function signatures are not guessed.
 Enable **ClickHouse PIPE support** under Settings > Tools > ClickHouse PIPE.
 PIPE defaults off; `-Dclickhouse.pipes=false` vetoes it. SELECT-first and FROM-first
 pipelines use shared Execute, preview, run-to-stage, completion and coloring.
-There is no native validator: the verdict is Unavailable, never Accepted.
+There is no native validator; generated SQL has no engine verdict, never Accepted.
 ClickHouse `{name:Type}` parameters pass through unchanged for the server;
 IDE `:name` binds are prompted and substituted before lowering.
 Unsupported CALL, NATURAL JOIN, STRAIGHT_JOIN, star RENAME, PIVOT and UNPIVOT
