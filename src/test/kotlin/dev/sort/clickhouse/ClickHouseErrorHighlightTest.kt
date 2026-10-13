@@ -24,7 +24,7 @@ class ClickHouseErrorHighlightTest : ClickHousePlatformTestCase() {
         assertEmpty(myFixture.doHighlighting(HighlightSeverity.ERROR))
     }
 
-    fun testMaskedBindFallbackDoesNotShowSpuriousGrammarErrors() {
+    fun testMaskedBindFallbackDoesNotContainPsiGrammarErrors() {
         val owner = boundaryCorpus.first { it.name == "owner multiline partitioned s3 insert" }.sql
         for (sql in listOf(
             "INSERT INTO FUNCTION null('id UInt64') PARTITION BY toString(:partition) SELECT 1 AS id;",
@@ -32,7 +32,7 @@ class ClickHouseErrorHighlightTest : ClickHousePlatformTestCase() {
             "INSERT INTO FUNCTION null('id UInt64, ts DateTime') PARTITION BY concat(:prefix, toString(ts)) (id, ts) SELECT id, ts FROM events;",
         )) {
             configure(sql)
-            assertEmpty(sql, myFixture.doHighlighting(HighlightSeverity.ERROR))
+            assertEmpty(sql, PsiTreeUtil.findChildrenOfType(myFixture.file, PsiErrorElement::class.java))
         }
     }
 

@@ -26,9 +26,21 @@ keywords insert UPPER. Missing function signatures are not guessed.
 Enable **ClickHouse PIPE support** under Settings > Tools > ClickHouse PIPE.
 PIPE defaults off; `-Dclickhouse.pipes=false` vetoes it. SELECT-first and FROM-first
 pipelines use shared Execute, preview, run-to-stage, completion and coloring.
-There is no native validator; generated SQL has no engine verdict, never Accepted.
+PIPE execution still has no engine verdict; its editor syntax is checked locally.
 ClickHouse `{name:Type}` parameters pass through unchanged for the server;
 IDE `:name` binds are prompted and substituted before lowering.
 IDE `:name` inside masked `PARTITION BY` is prompted; such statements use lenient PSI and lose structured INSERT/SELECT nodes until clause-level parsing is available.
 Unsupported CALL, NATURAL JOIN, STRAIGHT_JOIN, star RENAME, PIVOT and UNPIVOT
 are refused or blocked rather than submitted.
+
+Local PSI/core checks run first. While the file's data source is connected, a
+separate helper asks its server to parse SQL using `formatQuery` over hex data.
+It runs no startup script and never executes, binds or reads the submitted SQL;
+no chDB is bundled. Server acceptance clears local false positives in that unit;
+unavailable verification preserves local errors. IDE binds are masked at equal
+length; typed ClickHouse parameters stay unchanged. Compression is disabled on
+helpers, and `ignore_unknown_config_key=true` tolerates the IDE's `session_id`.
+With the 0.9.8 JDBC driver, readonly=1 logins can yield Unavailable because the
+driver sends settings the server forbids; this never means the SQL is clean.
+New local core diagnostics can flag a destination column list after PARTITION BY;
+the server's acceptance clears that local false positive in the verified statement.

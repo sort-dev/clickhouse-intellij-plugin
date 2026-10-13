@@ -7,7 +7,8 @@
         <p>ClickHouse statement boundaries, metadata completion and optional PIPE authoring.
         Enable ClickHouse PIPE support under Settings &gt; Tools &gt; ClickHouse PIPE to
         preview generated SQL, execute pipelines and run stages up to the caret.</p>
-        <p>No native validator is bundled. Generated SQL is unverified by a ClickHouse engine.</p>
+        <p>Local PSI and Brikk SQL checks run first. While your data source is connected,
+        its ClickHouse parser adds a parse-only check without executing or reading data.</p>
     ]]></description>
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.database</depends>
@@ -17,6 +18,8 @@
         <lang.syntaxHighlighterFactory language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.sql.ClickHouseSyntaxHighlighterFactory"/>
         <lang.commenter language="ClickHouseSQL" implementationClass="com.intellij.database.sql.common.core.psi.impl.support.SqlNestedCommenter"/>
         <lang.quoteHandler language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.sql.ClickHouseQuoteHandler"/>
+        <externalAnnotator language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.validation.ClickHouseNativeErrorAnnotator"/>
+        <highlightErrorFilter implementation="dev.sort.clickhouse.validation.ClickHouseNativePsiFilter"/>
         <annotator language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.sql.ClickHouseMaskedSpanAnnotator"/>
         <completion.contributor language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.sql.ClickHouseCompletionContributor" id="clickhouse.metadata" order="first"/>
         <completion.confidence language="ClickHouseSQL" implementation="dev.sort.clickhouse.sql.ClickHouseCompletionConfidence" order="first"/>
@@ -49,4 +52,8 @@
             <action id="ClickHousePipe.RunToStage" class="dev.sort.clickhouse.pipe.ClickHouseRunToStageAction" text="Run Stages up to Caret"/>
         </group>
     </actions>
+    <applicationListeners>
+        <listener class="dev.sort.clickhouse.validation.ClickHouseVerificationConnectionListener"
+                  topic="com.intellij.database.dataSource.DatabaseConnectionManager$Listener"/>
+    </applicationListeners>
 </idea-plugin>
