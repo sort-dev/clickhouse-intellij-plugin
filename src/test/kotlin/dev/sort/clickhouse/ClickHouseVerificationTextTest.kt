@@ -15,4 +15,9 @@ class ClickHouseVerificationTextTest : TestCase() {
         val sql = "SELECT flag?a:b, flag ? 1 : 0 FROM events"
         assertEquals(sql, maskClickHouseIdeBinds(sql))
     }
+
+    fun testTernarySyntaxRemainsUnchangedWhenCoreCannotParseTheInsertHeader() {
+        val sql = "INSERT INTO FUNCTION null('id UInt64, ts DateTime') PARTITION BY toYYYYMM(ts) (id, ts) SELECT flag?a:b AS id, ts FROM events;"
+        assertEquals(sql, maskClickHouseIdeBinds(sql))
+    }
 }

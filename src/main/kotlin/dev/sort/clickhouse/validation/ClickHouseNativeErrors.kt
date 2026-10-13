@@ -9,9 +9,13 @@ import dev.brikk.house.sql.intellij.diagnostics.NativeErrorAnnotator
 import dev.brikk.house.sql.intellij.diagnostics.NativeErrorProfile
 import dev.brikk.house.sql.intellij.diagnostics.NativeErrorPsiFilter
 import dev.brikk.house.sql.intellij.diagnostics.VerificationConnectionListener
+import dev.brikk.house.sql.intellij.pipe.isEnabled
 import dev.brikk.house.sql.parser.ParseError
 import dev.brikk.house.sql.parser.SqlStatementRange
 import dev.brikk.house.sql.parser.TokenError
+import dev.brikk.house.sql.parser.TokenType
+import dev.brikk.house.sql.parser.Tokenizer
+import dev.brikk.house.sql.parser.TokenizerConfigs
 import dev.brikk.house.sql.shape.ParamStyle
 import dev.brikk.house.sql.shape.ShapeError
 import dev.brikk.house.sql.shape.SqlScriptParameters
@@ -51,7 +55,7 @@ object ClickHouseNativeErrorProfile : NativeErrorProfile {
     override fun verificationText(file: PsiFile, sql: String): String = maskClickHouseIdeBinds(sql)
 
     override fun statementDiagnostics(file: PsiFile, script: String, statement: SqlStatementRange) =
-        if (statement.hasPipe && ClickHousePipeDialect.isProjectEnabled(file.project)) {
+        if (statement.hasPipe && ClickHousePipeDialect.isEnabled(file.project)) {
             // PIPE is editor syntax, not server SQL. Its execution still uses shared lowering.
             localParseDiagnostics(script, statement.start until statement.end, dialect, ProgressManager::checkCanceled)
         } else null
@@ -70,6 +74,11 @@ internal fun maskClickHouseIdeBinds(sql: String): String {
         null
     } catch (_: ShapeError) {
         null
+    }
+    // An unproved '?' may be native ternary syntax, whose ':' is not an IDE bind.
+    if (parsed == null) {
+        val tokens = Tokenizer(TokenizerConfigs.forName("clickhouse")).tokenizeForEditor(sql, ProgressManager::checkCanceled).tokens
+        if (tokens.any { it.tokenType == TokenType.PLACEHOLDER }) return sql
     }
     val binds = parsed ?: SqlScriptParameters.parse(sql, "clickhouse", ProgressManager::checkCanceled).occurrences
         .filter { it.style == ParamStyle.NAMED_COLON }

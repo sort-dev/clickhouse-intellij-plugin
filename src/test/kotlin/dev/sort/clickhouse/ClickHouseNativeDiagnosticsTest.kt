@@ -4,6 +4,7 @@ import com.intellij.codeInsight.daemon.impl.AnnotationHolderImpl
 import com.intellij.lang.annotation.AnnotationSession
 import com.intellij.lang.annotation.Annotator
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.components.service
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiFile
 import dev.brikk.house.sql.intellij.diagnostics.NativeErrorAnnotator
@@ -13,11 +14,15 @@ import dev.brikk.house.sql.intellij.testing.setSqlDialectMapping
 import dev.brikk.house.sql.verify.SqlVerifier
 import dev.brikk.house.sql.verify.VerifyError
 import dev.brikk.house.sql.verify.VerifyResult
+import dev.brikk.house.sql.parser.SqlScriptSnapshot
+import dev.sort.clickhouse.pipe.ClickHousePipeDialect
+import dev.sort.clickhouse.pipe.ClickHousePipeSettings
 import dev.sort.clickhouse.sql.ClickHouseDialect
 import dev.sort.clickhouse.validation.ClickHouseNativeErrorProfile
 import java.util.concurrent.Callable
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.TimeUnit
+import com.intellij.testFramework.PlatformTestUtil
 
 class ClickHouseNativeDiagnosticsTest : ClickHousePlatformTestCase() {
     private class RecordingVerifier(private val answer: (String) -> VerifyResult) : SqlVerifier {
@@ -76,5 +81,28 @@ class ClickHouseNativeDiagnosticsTest : ClickHousePlatformTestCase() {
         val verifier = RecordingVerifier { VerifyResult.Accepted }
         annotations(sql, verifier)
         assertEquals(listOf("SELECT 0     , 0, {server:UInt64}"), verifier.asked.toList())
+    }
+
+    fun testVmVetoDoesNotTreatRawPipeSyntaxAsEnabledEditorSyntax() {
+        val configured = myFixture.configureByText("veto-diagnostics.sql", "SELECT 1 AS id |> WHERE id > 0")
+        setSqlDialectMapping(project, configured.virtualFile, ClickHouseDialect)
+        val settings = project.service<ClickHousePipeSettings>()
+        val previous = settings.enabled
+        val flag = System.getProperty(ClickHousePipeDialect.vetoProperty)
+        try {
+            System.clearProperty(ClickHousePipeDialect.vetoProperty)
+            settings.enabled = true
+            PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+            val sql = myFixture.file.text
+            val statement = SqlScriptSnapshot.parse(sql, "clickhouse").statements.single()
+            assertNotNull(ClickHouseNativeErrorProfile.statementDiagnostics(myFixture.file, sql, statement))
+            System.setProperty(ClickHousePipeDialect.vetoProperty, "false")
+            assertNull(ClickHouseNativeErrorProfile.statementDiagnostics(myFixture.file, sql, statement))
+        } finally {
+            settings.enabled = previous
+            if (flag == null) System.clearProperty(ClickHousePipeDialect.vetoProperty)
+            else System.setProperty(ClickHousePipeDialect.vetoProperty, flag)
+            PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+        }
     }
 }

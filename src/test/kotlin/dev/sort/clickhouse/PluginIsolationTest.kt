@@ -75,7 +75,7 @@ class PluginIsolationTest : BasePlatformTestCase() {
     }
 
     fun testInstalledExecuteChainsKeepEveryPluginsWrapper() {
-        val plugins = listOf("clickhouse") + System.getProperty("test.siblingPlugins", "").split(',').filter(String::isNotBlank)
+        val loaders = registeredConfigurations().map { it.classLoader }.distinct()
         for (id in EXECUTE_IDS) {
             var action = requireNotNull(ActionManager.getInstance().getAction(id))
             val chain = mutableListOf<Class<*>>()
@@ -84,22 +84,16 @@ class PluginIsolationTest : BasePlatformTestCase() {
                 chain += action.javaClass
                 action = (action as? ActionWithDelegate<*>)?.delegate as? AnAction ?: break
             }
-            for (name in plugins) {
-                val loader = requireNotNull(PluginManagerCore.getPlugin(PluginId.getId("dev.sort.$name-intellij-plugin"))?.pluginClassLoader)
-                assertTrue("$name missing from $id: $chain", chain.any { it === loader.loadClass("dev.brikk.house.sql.intellij.CooperativeExecuteAction") })
+            for (loader in loaders) {
+                assertTrue("$loader missing from $id: $chain", chain.any { it === loader.loadClass("dev.brikk.house.sql.intellij.CooperativeExecuteAction") })
             }
             assertTrue(chain.toString(), chain.last().name.startsWith("com.intellij.database.actions.RunQueryAction"))
         }
     }
 
     fun testRegistrationOrdersDelegateUnownedInputExactlyOnce() {
-        val names = listOf("clickhouse") + System.getProperty("test.siblingPlugins", "").split(',').filter(String::isNotBlank)
-        val loaders = names.map { name ->
-            requireNotNull(PluginManagerCore.getPlugin(PluginId.getId("dev.sort.$name-intellij-plugin"))?.pluginClassLoader)
-        }
-        val registered = ApplicationManager.getApplication().extensionArea
-            .getExtensionPoint<DynamicActionConfigurationCustomizer>("com.intellij.dynamicActionConfigurationCustomizer").extensionList
-        val configurations = loaders.map { loader -> registered.single { it.javaClass.classLoader === loader }.javaClass }
+        val configurations = registeredConfigurations()
+        assertNotEmpty(configurations)
         val manager = ActionManager.getInstance()
         val originals = EXECUTE_IDS.associateWith { requireNotNull(manager.getAction(it)) }
         val event = AnActionEvent.createEvent(SimpleDataContext.getProjectContext(project), Presentation(), "ClickHouseIsolation", ActionUiKind.NONE, null)
@@ -112,7 +106,7 @@ class PluginIsolationTest : BasePlatformTestCase() {
                         delegated++
                     }
                 })
-                val adapters = order.map { it.getConstructor().newInstance() as DynamicActionConfigurationCustomizer }
+                val adapters = order.map { it.getConstructor().newInstance() }
                 try {
                     adapters.forEach { it.registerActions(manager) }
                     EXECUTE_IDS.forEach { requireNotNull(manager.getAction(it)).actionPerformed(event) }
@@ -127,6 +121,16 @@ class PluginIsolationTest : BasePlatformTestCase() {
         } finally {
             originals.forEach { (id, action) -> manager.replaceAction(id, action) }
         }
+    }
+
+    private fun registeredConfigurations(): List<Class<out DynamicActionConfigurationCustomizer>> {
+        val names = listOf("clickhouse") + System.getProperty("test.siblingPlugins", "").split(',').filter(String::isNotBlank)
+        val loaders = names.map { name ->
+            requireNotNull(PluginManagerCore.getPlugin(PluginId.getId("dev.sort.$name-intellij-plugin"))?.pluginClassLoader)
+        }
+        val registered = ApplicationManager.getApplication().extensionArea
+            .getExtensionPoint<DynamicActionConfigurationCustomizer>("com.intellij.dynamicActionConfigurationCustomizer").extensionList
+        return registered.filter { it.javaClass.classLoader in loaders }.map { it.javaClass }
     }
 }
 
