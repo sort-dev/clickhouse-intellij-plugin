@@ -5,6 +5,8 @@ import dev.sort.clickhouse.pipe.ClickHousePipeDialect
 import dev.sort.clickhouse.pipe.ClickHousePreviewIntention
 import dev.sort.clickhouse.pipe.ClickHouseRunToStageIntention
 import dev.sort.clickhouse.brikk.kotlin.ClickHouseBrikkInspectionRule
+import com.intellij.database.intentions.RunQueryIntentionActionAvailable
+import com.intellij.openapi.extensions.ExtensionPointName
 import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.openapi.actionSystem.ActionUiKind
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -17,6 +19,14 @@ import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.notification.NotificationType
 
 class ClickHouseBrikkExecutionTest : ClickHouseBrikkTestCase() {
+    fun testRunConsoleVetoIsRegisteredAndBlocksTheInjectedView() {
+        val host = configure("@BrikkSql fun query() = Sql.clickhouse(\"SELECT <caret>1\")")
+        val file = injected(host)
+        val veto = ExtensionPointName.create<RunQueryIntentionActionAvailable>("com.intellij.database.runConsoleAvailable")
+            .extensionList.filterIsInstance<ClickHouseRunConsoleVeto>().single()
+        assertFalse(veto.isAvailable(myFixture.editor, file))
+        assertFalse(veto.isAvailable(myFixture.editor))
+    }
     fun testHostEditorExecuteIsRefusedByTheSharedContract() {
         HostSqlExecutionContract(ClickHousePipeDialect) {
             val host = configure("@BrikkSql fun query() = Sql.clickhouse(\"FROM events |> WHERE <caret>id > 0 |> SELECT id\")")
