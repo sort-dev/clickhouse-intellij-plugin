@@ -3,6 +3,7 @@ package dev.sort.clickhouse.validation
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiFile
 import dev.brikk.house.sql.diagnostics.localParseDiagnostics
+import dev.brikk.house.sql.generator.UnsupportedError
 import dev.brikk.house.sql.intellij.catalog.DialectDataSourceResolver
 import dev.brikk.house.sql.intellij.diagnostics.DataSourceVerification
 import dev.brikk.house.sql.intellij.diagnostics.NativeErrorAnnotator
@@ -52,7 +53,7 @@ object ClickHouseNativeErrorProfile : NativeErrorProfile {
 
     override fun validator(file: PsiFile) = verification.validator(file)
     override fun modificationCount(file: PsiFile): Long = verification.modificationCount(file)
-    override fun verificationText(file: PsiFile, sql: String): String = maskClickHouseIdeBinds(sql)
+    override fun verificationText(file: PsiFile, sql: String): String = maskClickHouseIdeBinds(sql) ?: ""
 
     override fun statementDiagnostics(file: PsiFile, script: String, statement: SqlStatementRange) =
         if (statement.hasPipe && ClickHousePipeDialect.isEnabled(file.project)) {
@@ -65,7 +66,7 @@ class ClickHouseNativeErrorAnnotator : NativeErrorAnnotator(ClickHouseNativeErro
 class ClickHouseNativePsiFilter : NativeErrorPsiFilter(ClickHouseNativeErrorProfile)
 class ClickHouseVerificationConnectionListener : VerificationConnectionListener()
 
-internal fun maskClickHouseIdeBinds(sql: String): String {
+internal fun maskClickHouseIdeBinds(sql: String): String? {
     val parsed = try {
         parseParameterOccurrences(sql, "clickhouse").filter { it.style == ParamStyle.NAMED_COLON || it.style == ParamStyle.POSITIONAL }
     } catch (_: ParseError) {
@@ -74,16 +75,18 @@ internal fun maskClickHouseIdeBinds(sql: String): String {
         null
     } catch (_: ShapeError) {
         null
+    } catch (_: UnsupportedError) {
+        null
     }
-    // An unproved '?' may be native ternary syntax, whose ':' is not an IDE bind.
     if (parsed == null) {
         val tokens = Tokenizer(TokenizerConfigs.forName("clickhouse")).tokenizeForEditor(sql, ProgressManager::checkCanceled).tokens
-        if (tokens.any { it.tokenType == TokenType.PLACEHOLDER }) return sql
+        val names = SqlScriptParameters.parse(sql, "clickhouse", ProgressManager::checkCanceled).occurrences
+        if (tokens.any { it.tokenType == TokenType.PLACEHOLDER || it.tokenType == TokenType.QDCOLON } ||
+            names.any { it.style == ParamStyle.NAMED_COLON }) return null
+        return sql
     }
-    val binds = parsed ?: SqlScriptParameters.parse(sql, "clickhouse", ProgressManager::checkCanceled).occurrences
-        .filter { it.style == ParamStyle.NAMED_COLON }
     return StringBuilder(sql).apply {
-        for (bind in binds) {
+        for (bind in parsed) {
             setCharAt(bind.range.start, '0')
             for (offset in bind.range.start + 1 until bind.range.end) {
                 if (sql[offset] != '\r' && sql[offset] != '\n') setCharAt(offset, ' ')

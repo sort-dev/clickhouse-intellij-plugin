@@ -6,7 +6,7 @@ import junit.framework.TestCase
 class ClickHouseVerificationTextTest : TestCase() {
     fun testOnlyIdeBindsAreMaskedWithoutChangingOffsets() {
         val sql = "SELECT :name, ?, {name:UInt64}, {table:Identifier}, ':literal ?', 1 -- :comment ?\r\nFROM events"
-        val masked = maskClickHouseIdeBinds(sql)
+        val masked = requireNotNull(maskClickHouseIdeBinds(sql))
         assertEquals(sql.length, masked.length)
         assertEquals(sql.replace(":name,", "0    ,").replace(", ?,", ", 0,"), masked)
     }
@@ -16,8 +16,20 @@ class ClickHouseVerificationTextTest : TestCase() {
         assertEquals(sql, maskClickHouseIdeBinds(sql))
     }
 
-    fun testTernarySyntaxRemainsUnchangedWhenCoreCannotParseTheInsertHeader() {
+    fun testUnprovedTernarySyntaxGetsNoVerificationText() {
         val sql = "INSERT INTO FUNCTION null('id UInt64, ts DateTime') PARTITION BY toYYYYMM(ts) (id, ts) SELECT flag?a:b AS id, ts FROM events;"
-        assertEquals(sql, maskClickHouseIdeBinds(sql))
+        assertNull(maskClickHouseIdeBinds(sql))
+    }
+
+    fun testUnsupportedOrUnparseableIdeBindsGetNoVerificationText() {
+        for (sql in listOf(
+            "SELECT ?::UInt64",
+            "INSERT INTO FUNCTION null('id UInt64, ts DateTime') PARTITION BY toYYYYMM(ts) (id, ts) SELECT ?, ts FROM events;",
+            "SELECT FROM WHERE ? +;",
+            "SELECT FROM WHERE :name +;",
+        )) {
+            val masked = maskClickHouseIdeBinds(sql)
+            assertNull("$sql -> $masked", masked)
+        }
     }
 }
