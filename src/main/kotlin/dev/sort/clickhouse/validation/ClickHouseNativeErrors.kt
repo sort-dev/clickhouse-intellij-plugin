@@ -3,6 +3,7 @@ package dev.sort.clickhouse.validation
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiFile
 import dev.brikk.house.sql.diagnostics.localParseDiagnostics
+import dev.brikk.house.sql.dialects.Dialects
 import dev.brikk.house.sql.generator.UnsupportedError
 import dev.brikk.house.sql.intellij.catalog.DialectDataSourceResolver
 import dev.brikk.house.sql.intellij.diagnostics.DataSourceVerification
@@ -20,7 +21,6 @@ import dev.brikk.house.sql.parser.TokenizerConfigs
 import dev.brikk.house.sql.shape.ParamStyle
 import dev.brikk.house.sql.shape.ShapeError
 import dev.brikk.house.sql.shape.SqlScriptParameters
-import dev.brikk.house.sql.shape.parseParameterOccurrences
 import dev.brikk.house.sql.verify.ClickhouseQueryConnection
 import dev.brikk.house.sql.verify.ParseOnlyClickhouseVerifier
 import dev.sort.clickhouse.ClickHouseDbms
@@ -67,8 +67,24 @@ class ClickHouseNativePsiFilter : NativeErrorPsiFilter(ClickHouseNativeErrorProf
 class ClickHouseVerificationConnectionListener : VerificationConnectionListener()
 
 internal fun maskClickHouseIdeBinds(sql: String): String? {
-    val parsed = try {
-        parseParameterOccurrences(sql, "clickhouse").filter { it.style == ParamStyle.NAMED_COLON || it.style == ParamStyle.POSITIONAL }
+    val parameters = SqlScriptParameters.parse(sql, "clickhouse", positional = true, checkCanceled = ProgressManager::checkCanceled)
+    if (parameters.failureOffset != null || parameters.ambiguous.isNotEmpty()) return null
+    // The published scanner does not yet classify the leading '?' in QDCOLON (?::).
+    val tokens = Tokenizer(TokenizerConfigs.forName("clickhouse")).tokenizeForEditor(sql, ProgressManager::checkCanceled).tokens
+    if (tokens.any { it.tokenType == TokenType.QDCOLON }) return null
+    val binds = parameters.occurrences.filter { it.style == ParamStyle.NAMED_COLON || it.style == ParamStyle.POSITIONAL }
+    if (binds.isEmpty()) return sql
+    val masked = StringBuilder(sql).apply {
+        for (bind in binds) {
+            setCharAt(bind.range.start, '0')
+            for (offset in bind.range.start + 1 until bind.range.end) {
+                if (sql[offset] != '\r' && sql[offset] != '\n') setCharAt(offset, ' ')
+            }
+        }
+    }.toString()
+    return try {
+        Dialects.forName("clickhouse").parse(masked)
+        masked
     } catch (_: ParseError) {
         null
     } catch (_: TokenError) {
@@ -78,19 +94,4 @@ internal fun maskClickHouseIdeBinds(sql: String): String? {
     } catch (_: UnsupportedError) {
         null
     }
-    if (parsed == null) {
-        val tokens = Tokenizer(TokenizerConfigs.forName("clickhouse")).tokenizeForEditor(sql, ProgressManager::checkCanceled).tokens
-        val names = SqlScriptParameters.parse(sql, "clickhouse", ProgressManager::checkCanceled).occurrences
-        if (tokens.any { it.tokenType == TokenType.PLACEHOLDER || it.tokenType == TokenType.QDCOLON } ||
-            names.any { it.style == ParamStyle.NAMED_COLON }) return null
-        return sql
-    }
-    return StringBuilder(sql).apply {
-        for (bind in parsed) {
-            setCharAt(bind.range.start, '0')
-            for (offset in bind.range.start + 1 until bind.range.end) {
-                if (sql[offset] != '\r' && sql[offset] != '\n') setCharAt(offset, ' ')
-            }
-        }
-    }.toString()
 }

@@ -16,15 +16,30 @@ class ClickHouseVerificationTextTest : TestCase() {
         assertEquals(sql, maskClickHouseIdeBinds(sql))
     }
 
-    fun testUnprovedTernarySyntaxGetsNoVerificationText() {
+    fun testTernarySyntaxInPartitionedInsertRemainsUnchanged() {
         val sql = "INSERT INTO FUNCTION null('id UInt64, ts DateTime') PARTITION BY toYYYYMM(ts) (id, ts) SELECT flag?a:b AS id, ts FROM events;"
-        assertNull(maskClickHouseIdeBinds(sql))
+        assertEquals(sql, maskClickHouseIdeBinds(sql))
     }
 
-    fun testUnsupportedOrUnparseableIdeBindsGetNoVerificationText() {
+    fun testPartitionedInsertPositionalBindsAreMasked() {
+        val sql = "INSERT INTO FUNCTION null('id UInt64, ts DateTime') PARTITION BY toYYYYMM(ts) (id, ts) SELECT ?, ts FROM events;"
+        assertEquals(sql.replace("SELECT ?", "SELECT 0"), maskClickHouseIdeBinds(sql))
+    }
+
+    fun testQuestionCastWithoutScannerProofWithholdsVerdict() {
+        assertNull(maskClickHouseIdeBinds("SELECT ?::UInt64"))
+    }
+
+    fun testMixedTernaryAndIdeBindsOnlyMaskTheBinds() {
+        assertEquals("SELECT x ? y : z", maskClickHouseIdeBinds("SELECT x ? y : z"))
+        assertEquals("SELECT x ? 0  : 0", maskClickHouseIdeBinds("SELECT x ? :p : ?"))
+    }
+
+    fun testAmbiguousAndUnparseableTextGetNoVerificationText() {
         for (sql in listOf(
-            "SELECT ?::UInt64",
-            "INSERT INTO FUNCTION null('id UInt64, ts DateTime') PARTITION BY toYYYYMM(ts) (id, ts) SELECT ?, ts FROM events;",
+            "SELECT x ?",
+            "SELECT x ?:y",
+            "SELECT 'unfinished ? :name",
             "SELECT FROM WHERE ? +;",
             "SELECT FROM WHERE :name +;",
         )) {

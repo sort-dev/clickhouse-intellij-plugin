@@ -62,7 +62,7 @@ class ClickHouseNativeDiagnosticsTest : ClickHousePlatformTestCase() {
     }
 
     fun testServerAcceptanceClearsALocalFalsePositiveInTheVerifiedStatement() {
-        val sql = "INSERT INTO FUNCTION null('id UInt64, ts DateTime') PARTITION BY concat('year=', toString(ts)) (id, ts) SELECT id, ts FROM events;"
+        val sql = "INSERT INTO events FORMAT Values (1, 'value');"
         assertNotEmpty(annotations(sql))
         assertEmpty(annotations(sql, RecordingVerifier { VerifyResult.Accepted }))
     }
@@ -85,8 +85,8 @@ class ClickHouseNativeDiagnosticsTest : ClickHousePlatformTestCase() {
 
     fun testUncertainMasksNeverAskTheVerifierOrClearLocalErrors() {
         for (sql in listOf(
-            "SELECT ?::UInt64",
-            "INSERT INTO FUNCTION null('id UInt64, ts DateTime') PARTITION BY toYYYYMM(ts) (id, ts) SELECT ?, ts FROM events;",
+            "SELECT x ?",
+            "SELECT x ?:y",
             "SELECT FROM WHERE ? +;",
             "SELECT FROM WHERE :name +;",
         )) {
