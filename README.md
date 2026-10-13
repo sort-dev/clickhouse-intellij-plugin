@@ -44,3 +44,10 @@ With the 0.9.8 JDBC driver, readonly=1 logins can yield Unavailable because the
 driver sends settings the server forbids; this never means the SQL is clean.
 New local core diagnostics can flag a destination column list after PARTITION BY;
 the server's acceptance clears that local false positive in the verified statement.
+
+The real-server IDE test runs only with `BRIKK_CLICKHOUSE_URL`. Start the task-only
+server with the library's `tools/clickhouse-verify-server.sh up` from this checkout,
+set the URL to `jdbc:clickhouse://127.0.0.1:18123/default` and
+`BRIKK_CLICKHOUSE_CONTAINER=brikk-ch-verify`, then run `ClickHouseServerVerificationTest`.
+The test uses synthetic logins, checks the query log and verifies no output file
+was written. Finish with the script's `down` command. Driver fixtures stay in `build/`.
