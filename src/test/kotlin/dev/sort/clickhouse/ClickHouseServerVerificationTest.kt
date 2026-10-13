@@ -17,7 +17,6 @@ import com.intellij.testFramework.PlatformTestUtil
 import dev.brikk.house.sql.intellij.testing.setSqlDialectMapping
 import dev.brikk.house.sql.verify.VerifyResult
 import dev.sort.clickhouse.sql.ClickHouseDialect
-import dev.sort.clickhouse.validation.ClickHouseNativeErrorAnnotator
 import dev.sort.clickhouse.validation.ClickHouseNativeErrorProfile
 import java.net.URI
 import java.net.http.HttpClient
@@ -83,6 +82,15 @@ class ClickHouseServerVerificationTest : ClickHousePlatformTestCase() {
         }
         requireNotNull(session).use {
             source.initScript = "INSERT INTO FUNCTION file('$marker-startup.tsv', 'TSV', 'id UInt64') SELECT 7"
+            val rejectedSql = "SELECT 'unicode 😀' FRM unknown_table"
+            val rejectedFile = myFixture.configureByText("server-rejection-$suffix.sql", rejectedSql)
+            setSqlDialectMapping(project, rejectedFile.virtualFile, ClickHouseDialect)
+            val rejected = myFixture.doHighlighting(HighlightSeverity.ERROR)
+                .filter { it.description.orEmpty().startsWith("ClickHouse:") }
+            assertEquals(rejected.toString(), 1, rejected.size)
+            val failedToken = rejectedSql.indexOf("unknown_table")
+            assertEquals(failedToken, rejected.single().startOffset)
+            assertEquals(failedToken + "unknown_table".length, rejected.single().endOffset)
             val statements = listOf(
                 "INSERT INTO FUNCTION s3('https://objects.example.invalid/$marker/{_partition_id}/export.parquet', 'CH1_FAKE_ACCESS', 'CH1_FAKE_SECRET', 'Parquet')",
                 "INSERT INTO FUNCTION file('$marker-{_partition_id}.parquet', 'Parquet', 'id UInt64, ts DateTime')",
@@ -92,16 +100,17 @@ class ClickHouseServerVerificationTest : ClickHousePlatformTestCase() {
                 setSqlDialectMapping(project, file.virtualFile, ClickHouseDialect)
                 assertFalse(password in source.url.orEmpty())
                 val validator = requireNotNull(ClickHouseNativeErrorProfile.validator(myFixture.file))
-                val verdict = ApplicationManager.getApplication().executeOnPooledThread(Callable { validator.verify(sql, null) })
+                val checkedSql = ClickHouseNativeErrorProfile.verificationText(myFixture.file, sql.removeSuffix(";"))
+                val verdict = ApplicationManager.getApplication().executeOnPooledThread(Callable { validator.verify(checkedSql, null) })
                 try {
                     PlatformTestUtil.waitWithEventsDispatching("ClickHouse parse-only verification", { verdict.isDone }, 30)
                     assertEquals(VerifyResult.Accepted, verdict.get(1, TimeUnit.SECONDS))
                 } finally {
                     if (!verdict.isDone) verdict.cancel(true)
                 }
-                assertEmpty(myFixture.doHighlighting(HighlightSeverity.ERROR).filter { it.toolId == ClickHouseNativeErrorAnnotator::class.java })
+                assertEmpty(myFixture.doHighlighting(HighlightSeverity.ERROR))
                 adminQuery("SYSTEM FLUSH LOGS")
-                val hex = sql.toByteArray(Charsets.UTF_8).toHexString(HexFormat.UpperCase)
+                val hex = checkedSql.toByteArray(Charsets.UTF_8).toHexString(HexFormat.UpperCase)
                 val logged = adminQuery("SELECT count() FROM system.query_log WHERE user = '$user' AND type = 'QueryFinish' AND startsWith(query, 'SELECT formatQuery(unhex(') AND position(query, '$hex') > 0")
                 assertTrue("Verification did not use the stored login", logged.toLong() > 0)
             }
