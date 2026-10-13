@@ -47,8 +47,10 @@ the server's acceptance clears that local false positive in the verified stateme
 Where IDE binds cannot be masked with certainty, verification gives no verdict
 and keeps local errors; uncertain text is never sent to the server.
 
-The real-server IDE test runs only with `BRIKK_CLICKHOUSE_URL`. Start the task-only
-server with the library's `tools/clickhouse-verify-server.sh up` from this checkout,
+The real-server IDE test runs only with `BRIKK_CLICKHOUSE_URL`.
+Run `./gradlew fetchClickHouseTestDriver` to fetch `clickhouse-jdbc-0.9.8-all.jar`
+and `slf4j-api-2.0.7.jar` into `build/clickhouse-driver/`; neither is bundled.
+Start the task-only server with the library's `tools/clickhouse-verify-server.sh up` from this checkout,
 set the URL to `jdbc:clickhouse://127.0.0.1:18123/default` and
 `BRIKK_CLICKHOUSE_CONTAINER=brikk-ch-verify`, then run `ClickHouseServerVerificationTest`.
 The test uses synthetic logins, checks the query log and verifies no output file

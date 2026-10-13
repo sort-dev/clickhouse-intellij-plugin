@@ -50,7 +50,6 @@ class ClickHouseServerVerificationTest : ClickHousePlatformTestCase() {
 
         val jar = Path.of(System.getenv("BRIKK_CLICKHOUSE_DRIVER") ?: System.getProperty("clickhouse.driver.fixture"))
         assertTrue("Missing driver fixture: $jar", Files.isRegularFile(jar))
-        project.basePath?.let { Files.createDirectories(Path.of(it)) }
         val manager = DatabaseDriverManager.getInstance()
         val driver = requireNotNull(manager.getDriver("clickhouse-sortdev")).copy("ch1-driver-$suffix", true) as DatabaseDriverImpl
         driver.artifacts = emptyList()

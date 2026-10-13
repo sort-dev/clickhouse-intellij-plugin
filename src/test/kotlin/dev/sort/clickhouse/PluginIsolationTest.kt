@@ -128,9 +128,14 @@ class PluginIsolationTest : BasePlatformTestCase() {
         val loaders = names.map { name ->
             requireNotNull(PluginManagerCore.getPlugin(PluginId.getId("dev.sort.$name-intellij-plugin"))?.pluginClassLoader)
         }
+        assertEquals(names.size, loaders.size)
         val registered = ApplicationManager.getApplication().extensionArea
             .getExtensionPoint<DynamicActionConfigurationCustomizer>("com.intellij.dynamicActionConfigurationCustomizer").extensionList
-        return registered.filter { it.javaClass.classLoader in loaders }.map { it.javaClass }
+        val configurations = registered.filter { it.javaClass.classLoader in loaders }.map { it.javaClass }
+        // SQL Transpiler is installed for coexistence but does not contribute an Execute customizer.
+        val executors = names.zip(loaders).filter { (name, _) -> name != "sql-transpiler" }.map { it.second }
+        assertSameElements(executors, configurations.map { it.classLoader }.distinct())
+        return configurations
     }
 }
 

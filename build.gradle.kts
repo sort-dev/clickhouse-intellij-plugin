@@ -28,6 +28,22 @@ dependencies {
     testImplementation(libs.brikk.sql.intellij.test.support)
 }
 
+val clickHouseTestDriver = configurations.create("clickHouseTestDriver") {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+    isTransitive = false
+}
+dependencies {
+    add(clickHouseTestDriver.name, "com.clickhouse:clickhouse-jdbc:0.9.8:all")
+    add(clickHouseTestDriver.name, "org.slf4j:slf4j-api:2.0.7")
+}
+tasks.register<Copy>("fetchClickHouseTestDriver") {
+    group = "verification"
+    description = "Fetches JDBC jars for the opt-in ClickHouse server fixture, never the plugin distribution."
+    from(clickHouseTestDriver)
+    into(layout.buildDirectory.dir("clickhouse-driver"))
+}
+
 tasks.withType<Test>().configureEach {
     // Pending shared diagnostic combination fix: this statement currently yields three distinct diagnostics.
     filter.excludeTestsMatching("dev.sort.clickhouse.ClickHouseNativeWiringTest.testKnownLibraryGapOneCombinedErrorPerMalformedStatement")
