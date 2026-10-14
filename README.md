@@ -22,6 +22,8 @@ needs its children, with targeted refreshes and a per-file progress banner.
 Native introspection uses the stock ClickHouse factory through a narrow connection-family
 adapter, since extension fallback alone does not satisfy its DBMS identity check.
 The ClickHouse dialect and model facade are registered directly for `CLICKHOUSE_BRIKK`.
+Qualified table references in a connected datasource also request a listed, unloaded database
+through the shared auto-introspection queue. Highlighting never opens that connection itself.
 Object sources use shared SHOW CREATE reads for databases, tables, views,
 materialized views and dictionaries. Dictionary objects use the stock model's
 Dictionary engine marker; materialized views use SHOW CREATE TABLE.

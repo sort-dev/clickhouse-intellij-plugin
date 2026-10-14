@@ -21,6 +21,7 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.IndexingTestUtil
 import dev.brikk.house.sql.intellij.testing.setSqlDialectMapping
 import dev.brikk.house.sql.intellij.testing.RecordingConsole
+import dev.brikk.house.sql.intellij.catalog.CatalogScopes
 import dev.sort.clickhouse.sql.ClickHouseDialect
 import dev.sort.clickhouse.brikk.ClickHouseRelationProfile
 import com.intellij.codeInsight.lookup.LookupElement
@@ -40,6 +41,7 @@ class ClickHouseModelCompletionTest : ClickHousePlatformTestCase() {
             isAutoSynchronize = false
             isKeepAlive = false
             this.model = model
+            introspectionScope = CatalogScopes.select(listOf(ObjectKind.SCHEMA), listOf("analytics"))
         }
         LocalDataSourceManager.getInstance(project).addDataSource(source)
         Disposer.register(testRootDisposable) {
@@ -74,7 +76,10 @@ class ClickHouseModelCompletionTest : ClickHousePlatformTestCase() {
         val stock = complete(sql, CHouseDialect.INSTANCE).filter { it.lookupString == "gate_events" }
         val own = complete(sql).filter { it.lookupString == "gate_events" }
         assertEquals(stock.map { it.lookupString }, own.map { it.lookupString })
-        // Neither dialect currently offers the table in this offline fixture. Do not call this insertion coverage.
+        assertEquals(listOf("gate_events"), own.map { it.lookupString })
+        myFixture.lookup.currentItem = own.single()
+        myFixture.finishLookup(Lookup.NORMAL_SELECT_CHAR)
+        assertEquals("SELECT * FROM analytics.gate_events", myFixture.editor.document.text)
         assertNotEmpty(ClickHouseRelationProfile.providers.mapNotNull { it.facts(myFixture.file) })
     }
 

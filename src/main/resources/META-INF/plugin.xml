@@ -40,6 +40,7 @@
         <completion.confidence language="ClickHouseSQL" implementation="dev.sort.clickhouse.sql.ClickHouseCompletionConfidence" order="first"/>
         <completion.contributor language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.pipe.ClickHouseStageCompletion" order="first, before clickhouse.metadata"/>
         <completion.contributor language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.catalog.ClickHouseQualifiedPathIntrospectContributor" order="first, before clickhouse.metadata"/>
+        <annotator language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.catalog.ClickHouseReferencedSchemaIntrospector"/>
         <editorNotificationProvider implementation="dev.sort.clickhouse.catalog.ClickHouseIntrospectBannerProvider"/>
         <postStartupActivity implementation="dev.sort.clickhouse.catalog.ClickHouseExecutionObserverStartup"/>
         <notificationGroup id="ClickHouse catalog" displayType="BALLOON"/>

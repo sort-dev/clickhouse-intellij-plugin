@@ -1,6 +1,15 @@
 package dev.sort.clickhouse.catalog
 
 import com.intellij.database.model.ObjectKind
+import com.intellij.database.dataSource.DatabaseConnectionManager
+import com.intellij.database.model.basic.BasicModel
+import com.intellij.database.dialects.clickhouse.model.CHouseRoot
+import com.intellij.lang.annotation.Annotator
+import com.intellij.lang.annotation.AnnotationHolder
+import com.intellij.openapi.project.DumbAware
+import com.intellij.openapi.components.service
+import com.intellij.psi.PsiElement
+import com.intellij.sql.psi.SqlReferenceExpression
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.project.Project
 import dev.brikk.house.sql.dialects.Dialects
@@ -9,6 +18,8 @@ import dev.brikk.house.sql.intellij.catalog.CatalogProfile
 import dev.brikk.house.sql.intellij.catalog.DialectDataSourceResolver
 import dev.brikk.house.sql.intellij.catalog.IntrospectBannerProvider
 import dev.brikk.house.sql.intellij.catalog.QualifiedPathIntrospectContributor
+import dev.brikk.house.sql.intellij.catalog.NamespaceTarget
+import dev.brikk.house.sql.intellij.catalog.isHelperRequestor
 import dev.sort.clickhouse.ClickHouseDbms
 import kotlinx.coroutines.CoroutineScope
 
@@ -32,3 +43,22 @@ class ClickHouseAutoIntrospectService(project: Project, scope: CoroutineScope) :
 
 class ClickHouseIntrospectBannerProvider : IntrospectBannerProvider(ClickHouseAutoIntrospectService::class.java)
 class ClickHouseQualifiedPathIntrospectContributor : QualifiedPathIntrospectContributor(ClickHouseAutoIntrospectService::class.java)
+
+/** Binds native table-reference PSI to the same shared queue used by qualified completion. */
+class ClickHouseReferencedSchemaIntrospector : Annotator, DumbAware {
+    override fun annotate(element: PsiElement, holder: AnnotationHolder) {
+        val reference = element as? SqlReferenceExpression ?: return
+        if (reference.referenceElementType.targetKind !in setOf(ObjectKind.TABLE, ObjectKind.VIEW, ObjectKind.MAT_VIEW)) return
+        val qualifier = reference.qualifierExpression as? SqlReferenceExpression ?: return
+        if (qualifier.qualifierExpression != null) return
+        val name = qualifier.name ?: return
+        val file = reference.containingFile
+        val source = clickHouseDataSources.resolve(file).dataSource ?: return
+        if (DatabaseConnectionManager.getInstance().activeConnections.none {
+                it.connectionPoint.dataSource.uniqueId == source.uniqueId && !isHelperRequestor(it.requestor)
+            }) return
+        val root = (source.model as? BasicModel)?.root as? CHouseRoot ?: return
+        val schema = root.schemas.get(name) ?: return
+        file.project.service<ClickHouseAutoIntrospectService>().request(file, source, NamespaceTarget(listOf(name), schema))
+    }
+}

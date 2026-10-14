@@ -8,16 +8,69 @@ import com.intellij.database.dataSource.DatabaseDriverManager
 import com.intellij.database.dataSource.LocalDataSource
 import com.intellij.database.dataSource.LocalDataSourceManager
 import com.intellij.database.dataSource.DataSourceSyncManager
+import com.intellij.database.dataSource.DataSourceConfigurable
+import com.intellij.database.dataSource.DataSourceSchemasPanel
+import com.intellij.database.dataSource.DataSourceScopeEditor
 import com.intellij.database.util.LoaderContext
-import com.intellij.database.util.IntrospectionScopeUpdater
 import com.intellij.database.psi.DbPsiFacade
 import com.intellij.database.psi.DataSourceManager
+import com.intellij.database.introspection.IntrospectionScopes
+import com.intellij.database.view.DbNamespaceNode
+import com.intellij.ui.CheckboxTreeBase
+import com.intellij.ui.CheckedTreeNode
+import com.intellij.util.ui.UIUtil
 import com.intellij.database.dataSource.connection.ConnectionRequestor
 import com.intellij.database.dialects.DatabaseDialects
 import com.intellij.database.model.ObjectKind
+import com.intellij.database.model.ObjectName
+import com.intellij.database.Dbms
+import com.intellij.database.DataBus
+import com.intellij.database.datagrid.DataAuditor
+import com.intellij.database.datagrid.DataRequest
+import com.intellij.database.connection.throwable.info.ErrorInfo
+import com.intellij.openapi.actionSystem.ActionManager
+import com.intellij.openapi.actionSystem.CommonDataKeys
+import com.intellij.openapi.actionSystem.impl.SimpleDataContext
+import com.intellij.testFramework.TestActionEvent
+import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.psi.PsiDocumentManager
+import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.sql.psi.SqlReferenceExpression
+import com.intellij.sql.dialects.clickhouse.CHouseDialect
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArrayList
+import com.intellij.database.util.TreePattern
+import com.intellij.sql.dialects.SqlResolveMappings
+import com.intellij.sql.dialects.SqlImportUtil
+import com.intellij.testFramework.IndexingTestUtil
+import com.intellij.codeInsight.daemon.impl.AnnotationHolderImpl
+import com.intellij.lang.LanguageAnnotators
+import com.intellij.lang.annotation.AnnotationSession
 import com.intellij.database.model.ModelFactory
 import com.intellij.database.model.DasObject
 import com.intellij.database.model.basic.BasicModel
+import com.intellij.database.psi.DbTable
+import com.intellij.database.console.JdbcConsole
+import com.intellij.database.console.session.DatabaseSessionManager
+import com.intellij.database.console.session.DatabaseSessionViewService
+import com.intellij.database.editor.DatabaseCompositeTableEditorProvider
+import com.intellij.database.vfs.DatabaseElementVirtualFileImpl
+import com.intellij.database.editor.DataGridContainer
+import com.intellij.database.editor.DataHookupContainer
+import com.intellij.database.datagrid.GridRequestSource
+import com.intellij.database.datagrid.DataGridSessionClient
+import com.intellij.database.extractors.DbExtractorsHelper
+import com.intellij.database.extractors.ExtractionConfig
+import com.intellij.database.extractors.FormatExtractorFactory
+import com.intellij.database.csv.CsvFormats
+import com.intellij.database.util.Out
+import com.intellij.database.util.DdlBuilder
+import com.intellij.database.plan.ExplainPlanProvider
+import com.intellij.database.run.ui.DataAccessType
+import com.intellij.database.script.generator.ScriptCategory
+import com.intellij.database.script.generator.ScriptingSingleModelTaskBuilder
+import com.intellij.database.script.generator.ScriptGenerators
 import com.intellij.database.dialects.clickhouse.model.CHouseRoot
 import com.intellij.util.PairConsumer
 import com.intellij.database.util.ObjectPath
@@ -26,6 +79,8 @@ import com.intellij.database.remote.jdbc.helpers.JdbcNativeUtil
 import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.codeInsight.lookup.Lookup
 import com.intellij.codeInsight.CodeInsightSettings
+import com.intellij.codeInspection.LocalInspectionEP
+import com.intellij.codeInspection.LocalInspectionTool
 import dev.brikk.house.sql.metadata.FunctionPresentation
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
@@ -39,9 +94,12 @@ import dev.brikk.house.sql.intellij.testing.JdbcCatalogRows
 import dev.sort.clickhouse.catalog.ClickHouseCatalogHarvester
 import dev.sort.clickhouse.catalog.ClickHouseLiveCatalogService
 import dev.sort.clickhouse.catalog.ClickHouseDefinitionProvider
+import dev.sort.clickhouse.catalog.ClickHouseAutoIntrospectService
+import dev.sort.clickhouse.catalog.ClickHouseReferencedSchemaIntrospector
 import dev.sort.clickhouse.sql.ClickHouseCompletionProfile
 import dev.brikk.house.sql.intellij.catalog.CatalogSource
 import dev.brikk.house.sql.intellij.catalog.RefreshOutcome
+import dev.brikk.house.sql.intellij.catalog.isHelperRequestor
 import dev.brikk.house.sql.metadata.FunctionKind
 import dev.brikk.house.sql.verify.VerifyResult
 import dev.sort.clickhouse.sql.ClickHouseDialect
@@ -58,10 +116,17 @@ import java.sql.Driver
 import java.util.Properties
 import java.util.concurrent.Callable
 import java.util.concurrent.TimeUnit
+import java.io.ByteArrayOutputStream
+import java.io.OutputStreamWriter
 import kotlinx.coroutines.runBlocking
 
 class ClickHouseServerVerificationTest : ClickHousePlatformTestCase() {
-    fun testNativeDataSourceSyncAndNamespaceSelection() {
+    fun testNativeDataSourceSyncAndNamespaceSelection() = nativePaths(false)
+    fun testReferenceAutoIntrospection() = nativePaths(true)
+    fun testStockNativePaths() = nativePaths(false, Dbms.CLICKHOUSE)
+
+    private fun nativePaths(checkReference: Boolean, dbms: Dbms = ClickHouseDbms.CLICKHOUSE_BRIKK) {
+        val language = if (dbms === Dbms.CLICKHOUSE) CHouseDialect.INSTANCE else ClickHouseDialect
         val url = requireNotNull(System.getenv("BRIKK_CLICKHOUSE_URL")?.takeIf(String::isNotBlank))
         val endpoint = URI.create("http:" + url.removePrefix("jdbc:clickhouse:"))
         val admin = URI.create("http://${endpoint.rawAuthority}/")
@@ -70,7 +135,8 @@ class ClickHouseServerVerificationTest : ClickHousePlatformTestCase() {
             check(response.statusCode() == 200) { response.body() }
             response.body()
         }
-        val namespace = "native_sync_${UUID.randomUUID().toString().replace("-", "") }"
+        val namespace = "native_sync_${UUID.randomUUID().toString().replace("-", "")}"
+        val deferredNamespace = "${namespace}_deferred"
         val user = "${namespace}_user"
         val password = "native-sync-synthetic-password"
         query("CREATE USER $user IDENTIFIED WITH plaintext_password BY '$password'")
@@ -78,11 +144,17 @@ class ClickHouseServerVerificationTest : ClickHousePlatformTestCase() {
         query("GRANT SELECT, SHOW DATABASES, SHOW TABLES, SHOW COLUMNS, SHOW DICTIONARIES ON *.* TO $user")
         query("CREATE DATABASE $namespace")
         Disposer.register(testRootDisposable) { query("DROP DATABASE IF EXISTS $namespace") }
+        query("CREATE DATABASE $deferredNamespace")
+        Disposer.register(testRootDisposable) { query("DROP DATABASE IF EXISTS $deferredNamespace") }
+        query("CREATE TABLE $deferredNamespace.deferred_table (id UInt64) ENGINE=Memory")
         query("CREATE TABLE $namespace.sync_table (id UInt64, label String) ENGINE=Memory")
+        query("INSERT INTO $namespace.sync_table VALUES (7, 'native path smoke')")
         val jar = Path.of(System.getenv("BRIKK_CLICKHOUSE_DRIVER") ?: System.getProperty("clickhouse.driver.fixture"))
         val drivers = DatabaseDriverManager.getInstance()
-        val driver = requireNotNull(drivers.getDriver("clickhouse-sortdev")).copy("native-sync-driver-$namespace", true) as DatabaseDriverImpl
+        val driver = requireNotNull(drivers.getDriver("clickhouse-sortdev")).copy("native-sync-driver-$namespace", false) as DatabaseDriverImpl
         driver.artifacts = emptyList()
+        driver.setForcedDbms(dbms)
+        driver.setSqlDialect(language.id)
         driver.additionalClasspathElements = listOf(jar, jar.resolveSibling("slf4j-api-2.0.7.jar"))
             .flatMap { SimpleClasspathElementFactory.createElements("jar://$it!/") }
         drivers.updateDriver(driver)
@@ -95,13 +167,14 @@ class ClickHouseServerVerificationTest : ClickHousePlatformTestCase() {
             passwordStorage = LocalDataSource.Storage.MEMORY
             isAutoSynchronize = false
             isKeepAlive = false
-            model = ModelFactory.BLACK_HOLE.createModel(ClickHouseDbms.CLICKHOUSE_BRIKK)
+            workingDir = Files.createDirectories(Path.of("build", "clickhouse-native-working-dir")).toAbsolutePath().toString()
+            model = ModelFactory.BLACK_HOLE.createModel(dbms)
         }
         DatabaseCredentials.getInstance().setPassword(source, OneTimeString(password))
         val sources = LocalDataSourceManager.getInstance(project)
         sources.addDataSource(source)
         Disposer.register(testRootDisposable) { sources.removeDataSource(source) }
-        assertSame(ClickHouseDbms.CLICKHOUSE_BRIKK, source.dbms)
+        assertSame(dbms, source.dbms)
         PlatformTestUtil.waitWithEventsDispatching("ClickHouse datasource model loaded", {
             DataSourceManager.byDataSource(project, source)?.isLoading(source) != true
         }, 30)
@@ -119,13 +192,201 @@ class ClickHouseServerVerificationTest : ClickHousePlatformTestCase() {
         sync(LoaderContext.selectListNamespacesTask(project, source))
         val root = (source.model as BasicModel).root as CHouseRoot
         assertNotNull(root.schemas.get(namespace))
-        val path = ObjectPath.create(namespace, ObjectKind.SCHEMA)
-        source.introspectionScope = IntrospectionScopeUpdater().toAdd(path).updateVisibleNamespaces(source.introspectionScope, source.model as BasicModel)
+        val properties = DataSourceConfigurable(sources, source, project)
+        try {
+            val schemas = DataSourceSchemasPanel(properties)
+            schemas.reset(source)
+            val scopeEditor = DataSourceSchemasPanel::class.java.getDeclaredField("myScopeEditor").let { field ->
+                field.isAccessible = true
+                field.get(schemas) as DataSourceScopeEditor
+            }
+            scopeEditor.setInitialModel(source, source.model as BasicModel)
+            val tree = requireNotNull(UIUtil.findComponentOfType(schemas.component, CheckboxTreeBase::class.java))
+            PlatformTestUtil.waitWithEventsDispatching("ClickHouse namespace settings tree", {
+                (tree.model.root as CheckedTreeNode).breadthFirstEnumeration().asSequence()
+                    .filterIsInstance<CheckedTreeNode>().any { (it.userObject as? DbNamespaceNode)?.name == namespace }
+            }, 20)
+            val node = (tree.model.root as CheckedTreeNode).breadthFirstEnumeration().asSequence()
+                .filterIsInstance<CheckedTreeNode>().first { (it.userObject as? DbNamespaceNode)?.name == namespace }
+            tree.setNodeState(node, true)
+            val deferredNode = (tree.model.root as CheckedTreeNode).breadthFirstEnumeration().asSequence()
+                .filterIsInstance<CheckedTreeNode>().first { (it.userObject as? DbNamespaceNode)?.name == deferredNamespace }
+            tree.setNodeState(deferredNode, true)
+            schemas.saveSettings(source)
+            assertTrue(IntrospectionScopes.exportState((source.model as BasicModel).metaModel, source.introspectionScope).contains(namespace))
+        } finally {
+            properties.disposeUIResources()
+        }
+        fun open(sql: String): com.intellij.psi.PsiFile {
+            val file = myFixture.configureByText("native-auto.sql", sql)
+            setSqlDialectMapping(project, file.virtualFile, language)
+            SqlResolveMappings.getInstance(project).setMapping(file.virtualFile,
+                TreePattern(SqlImportUtil.createDataSources(arrayOf(ObjectName.quoted(source.uniqueId)))))
+            IndexingTestUtil.waitUntilIndexesAreReady(project)
+            return myFixture.file
+        }
+        assertTrue(requireNotNull(root.schemas.get(namespace)).tables.isEmpty())
+        val resolveInspection = LocalInspectionEP.LOCAL_INSPECTION.extensionList.single { it.implementationClass.endsWith(".SqlResolveInspection") }
+        myFixture.enableInspections(resolveInspection.instantiateTool() as LocalInspectionTool)
+        if (dbms === Dbms.CLICKHOUSE) sync(LoaderContext.selectGeneralTask(project, source))
+        val autoFile = open("SELECT * FROM $namespace.<caret>")
+        myFixture.completeBasic()
+        val auto = project.service<ClickHouseAutoIntrospectService>()
+        PlatformTestUtil.waitWithEventsDispatching("Completion introspects the ClickHouse database", {
+            auto.pending(autoFile.virtualFile) == null &&
+                ((source.model as BasicModel).root as CHouseRoot).schemas.get(namespace)?.tables?.get("sync_table")?.columns?.size() == 2
+        }, 60)
+        if (checkReference) {
+            val userConnection = runBlocking {
+                DatabaseConnectionManager.getInstance().build(project, source).setRequestor(ConnectionRequestor.Anonymous())
+                    .setAskPassword(false).create()
+            }
+            requireNotNull(userConnection).use {
+                assertTrue("Reference trigger needs a live user connection", DatabaseConnectionManager.getInstance().activeConnections.any {
+                    it.connectionPoint.dataSource.uniqueId == source.uniqueId && !isHelperRequestor(it.requestor)
+                })
+                open("SELECT d.id FROM $deferredNamespace.deferred_table d")
+                val references = PsiTreeUtil.findChildrenOfType(myFixture.file, SqlReferenceExpression::class.java)
+                assertTrue(references.map { it.text to it.referenceElementType.targetKind }.toString(),
+                    references.any { it.name == "deferred_table" && it.qualifierExpression != null })
+                val annotator = LanguageAnnotators.INSTANCE.allForLanguage(myFixture.file.language)
+                    .filterIsInstance<ClickHouseReferencedSchemaIntrospector>().single()
+                val holder = AnnotationHolderImpl(AnnotationSession(myFixture.file), false)
+                references.forEach { holder.runAnnotatorWithContext(it, annotator) }
+                holder.assertAllAnnotationsCreated()
+                PlatformTestUtil.waitWithEventsDispatching("References introspect an unloaded ClickHouse table; kinds=${references.map { it.referenceElementType.targetKind }}", {
+                    auto.pending(myFixture.file.virtualFile) == null &&
+                        ((source.model as BasicModel).root as CHouseRoot).schemas.get(deferredNamespace)?.tables?.get("deferred_table")?.columns?.size() == 1
+                }, 30)
+                PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+                assertEmpty(myFixture.doHighlighting(HighlightSeverity.ERROR))
+            }
+        }
         sync(LoaderContext.selectGeneralTask(project, source))
         DbPsiFacade.getInstance(project).clearCaches()
         val schema = requireNotNull(((source.model as BasicModel).root as CHouseRoot).schemas.get(namespace))
         val table = requireNotNull(schema.tables.get("sync_table"))
         assertSameElements(listOf("id", "label"), table.columns.map { it.name })
+        val scripting = ScriptingSingleModelTaskBuilder(source.model as BasicModel, ScriptCategory.CREATE_DEFINITION).apply {
+            addElements(listOf(table))
+            setReformat(false)
+        }.build()
+        val ddl = ScriptGenerators.makeScript(project, scripting).getScriptText()
+        assertTrue(ddl, ddl.contains("CREATE TABLE", ignoreCase = true) && ddl.contains("id UInt64") && ddl.contains("label String"))
+        val file = myFixture.addFileToProject("native-console.sql", "SELECT id, label FROM $namespace.sync_table")
+        setSqlDialectMapping(project, file.virtualFile, language)
+        val consoleSession = DatabaseSessionManager.openSession(project, source, "Native ClickHouse console smoke")
+        val console = JdbcConsole.newConsole(project).forFile(file.virtualFile).fromDataSource(source).useSession(consoleSession).build()
+        try {
+            assertTrue(console.isValid)
+            assertSame(dbms, console.dataSource.dbms)
+            val finished = ConcurrentHashMap.newKeySet<DataRequest>()
+            val errors = CopyOnWriteArrayList<String>()
+            DataBus.addRootAuditor(project, object : DataAuditor {
+                override fun error(context: DataRequest.Context, error: ErrorInfo) { errors += error.toString() }
+                override fun requestFinished(context: DataRequest.Context) { finished += context.request }
+            }, testRootDisposable)
+            myFixture.configureFromExistingVirtualFile(file.virtualFile)
+            WriteCommandAction.runWriteCommandAction(project) {
+                myFixture.editor.document.setText("USE $namespace;")
+            }
+            PsiDocumentManager.getInstance(project).commitDocument(myFixture.editor.document)
+            FileDocumentManager.getInstance().saveDocument(myFixture.editor.document)
+            myFixture.editor.selectionModel.removeSelection()
+            myFixture.editor.caretModel.moveToOffset(0)
+            val event = TestActionEvent.createTestEvent(SimpleDataContext.builder()
+                .add(CommonDataKeys.PROJECT, project).add(CommonDataKeys.PSI_FILE, myFixture.file)
+                .add(CommonDataKeys.VIRTUAL_FILE, file.virtualFile).add(CommonDataKeys.EDITOR, myFixture.editor).build())
+            requireNotNull(ActionManager.getInstance().getAction("Console.Jdbc.Execute")).actionPerformed(event)
+            PlatformTestUtil.waitWithEventsDispatching("Native ClickHouse USE finishes", { finished.isNotEmpty() }, 60)
+            assertEmpty(errors)
+            // The stock HTTP driver does not retain a raw USE across requests. Keep that baseline visible.
+            assertEquals("default", console.searchPath?.current?.name)
+            console.setSearchPath(SearchPath.of(ObjectPath.create(namespace, ObjectKind.SCHEMA)))
+            WriteCommandAction.runWriteCommandAction(project) {
+                myFixture.editor.document.setText("USE $namespace;\nSELECT s.id FROM sync_table s")
+            }
+            PsiDocumentManager.getInstance(project).commitDocument(myFixture.editor.document)
+            assertEmpty(myFixture.doHighlighting(HighlightSeverity.ERROR))
+            WriteCommandAction.runWriteCommandAction(project) {
+                myFixture.editor.document.setText("USE $namespace;\nSELECT s. FROM sync_table s")
+            }
+            PsiDocumentManager.getInstance(project).commitDocument(myFixture.editor.document)
+            myFixture.editor.caretModel.moveToOffset(myFixture.editor.document.text.indexOf("s. FROM") + 2)
+            val columns = myFixture.completeBasic().orEmpty().filter { it.lookupString in setOf("id", "label") }
+            assertSameElements(listOf("id", "label"), columns.map { it.lookupString })
+        } finally {
+            DatabaseSessionViewService.getInstance().destroyView(console)
+            Disposer.dispose(console)
+            Disposer.dispose(consoleSession)
+        }
+        val dbTable = requireNotNull(DbPsiFacade.getInstance(project).findDataSource(source.uniqueId)?.findElement(table)) as DbTable
+        val tableFile = requireNotNull(DatabaseElementVirtualFileImpl.findFile(dbTable, false))
+        val editorProvider = DatabaseCompositeTableEditorProvider()
+        assertTrue(editorProvider.accept(project, tableFile))
+        val editor = editorProvider.createEditor(project, tableFile)
+        try {
+            editor.selectNotify()
+            val grid = (editor as DataGridContainer).dataGrid
+            val request = GridRequestSource(object : GridRequestSource.RequestPlace {})
+            (editor as DataHookupContainer).dataHookup.loader.loadFirstPage(request)
+            PlatformTestUtil.waitWithEventsDispatching("Native ClickHouse table editor reads rows", {
+                grid.getDataModel(DataAccessType.DATABASE_DATA).rowCount == 1 || request.errorOccurred()
+            }, 60)
+            assertFalse(request.errorMessage, request.errorOccurred())
+            assertEquals(listOf("id", "label"), grid.getDataModel(DataAccessType.DATABASE_DATA).columns.map { it.name })
+            val data = grid.getDataModel(DataAccessType.DATABASE_DATA)
+            val helper = DbExtractorsHelper.INSTANCE
+            val csv = FormatExtractorFactory(CsvFormats.CSV_FORMAT.value)
+                .createExtractor(helper.createExtractorConfig(grid, grid.objectFormatter))
+            val output = NativeSmokeOut()
+            val extraction = requireNotNull(csv).startExtraction(output, data.columns, "SELECT id, label", ExtractionConfig())
+            extraction.addData(data.rows)
+            extraction.complete()
+            val exported = output.text()
+            assertTrue(exported, exported.contains("7") && exported.contains("native path smoke"))
+        } finally {
+            val client = (editor as DataHookupContainer).dataHookup as DataGridSessionClient
+            client.session.detach(client)
+            PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+            Disposer.dispose(editor)
+        }
+        val connected = runBlocking {
+            DatabaseConnectionManager.getInstance().build(project, source).setRequestor(ConnectionRequestor.Anonymous())
+                .setAskPassword(false).create()
+        }
+        requireNotNull(connected).use { handle ->
+            val core = handle.get()
+            assertSame(dbms, core.dbms)
+            val dialect = requireNotNull(DatabaseDialects.findByDbms(dbms))
+            JdbcNativeUtil.computeRemote { core.remoteConnection.setSchema(namespace) }
+            assertEquals(namespace, dialect.tryToLoadSearchPath(core)?.current?.name)
+            val definitions = mutableListOf<Any>()
+            ClickHouseDefinitionProvider().fetchSources(listOf(table), core, PairConsumer { _, text -> definitions += text })
+            assertTrue(definitions.toString(), definitions.single() is String && (definitions.single() as String).startsWith("CREATE TABLE"))
+            val explain = requireNotNull(requireNotNull(ExplainPlanProvider.getDefaultProvider(source)).createRawExplainTask(source, false))
+                .sqlExplainPlan(DdlBuilder().configureFor(dbTable), "SELECT id FROM $namespace.sync_table").statement
+            assertTrue(explain, explain.startsWith("EXPLAIN", ignoreCase = true))
+            JdbcNativeUtil.computeRemote {
+                val statement = core.remoteConnection.createStatement()
+                try {
+                    val plan = statement.executeQuery(explain)
+                    try { assertTrue(plan.next()) } finally { plan.close() }
+                } finally { statement.close() }
+            }
+        }
+    }
+
+    private class NativeSmokeOut : Out {
+        private val bytes = ByteArrayOutputStream()
+        private val writer = OutputStreamWriter(bytes, Charsets.UTF_8)
+        override fun toOutputStream() = bytes.also { writer.flush() }
+        override fun toAppendable() = writer
+        override fun append(value: ByteArray): Out = apply { writer.flush(); bytes.write(value) }
+        override fun appendText(value: CharSequence): Out = apply { writer.append(value) }
+        override fun sizeInBytes(): Long { writer.flush(); return bytes.size().toLong() }
+        override fun length(): Long = text().length.toLong()
+        fun text(): String { writer.flush(); return bytes.toString(Charsets.UTF_8) }
     }
 
     fun testCatalogHarvesterReadsOnlySmallSystemInventories() {
@@ -193,7 +454,7 @@ class ClickHouseServerVerificationTest : ClickHousePlatformTestCase() {
         val jar = Path.of(System.getenv("BRIKK_CLICKHOUSE_DRIVER") ?: System.getProperty("clickhouse.driver.fixture"))
         assertTrue("Missing driver fixture: $jar", Files.isRegularFile(jar))
         val manager = DatabaseDriverManager.getInstance()
-        val driver = requireNotNull(manager.getDriver("clickhouse-sortdev")).copy("ch1-driver-$suffix", true) as DatabaseDriverImpl
+        val driver = requireNotNull(manager.getDriver("clickhouse-sortdev")).copy("ch1-driver-$suffix", false) as DatabaseDriverImpl
         driver.artifacts = emptyList()
         driver.additionalClasspathElements = listOf(jar, jar.resolveSibling("slf4j-api-2.0.7.jar"))
             .flatMap { SimpleClasspathElementFactory.createElements("jar://$it!/") }
@@ -207,6 +468,7 @@ class ClickHouseServerVerificationTest : ClickHousePlatformTestCase() {
             passwordStorage = LocalDataSource.Storage.MEMORY
             isAutoSynchronize = false
             isKeepAlive = false
+            workingDir = Files.createDirectories(Path.of("build", "clickhouse-native-working-dir")).toAbsolutePath().toString()
         }
         DatabaseCredentials.getInstance().setPassword(source, OneTimeString(password))
         LocalDataSourceManager.getInstance(project).addDataSource(source)
