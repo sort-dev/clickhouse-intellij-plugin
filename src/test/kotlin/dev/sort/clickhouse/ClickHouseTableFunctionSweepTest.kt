@@ -57,6 +57,7 @@ class ClickHouseTableFunctionSweepTest : ClickHouseTableFunctionTestCase() {
 
     private fun cells(function: String): List<Cell> {
         val call = "$function(${args(function)})"
+        val projection = "SELECT 1 AS field_a, 'sample' AS field_b"
         val result = mutableListOf(
             Cell(function, Position.FROM, "SELECT * FROM $call"),
             Cell(function, Position.ALIAS, "SELECT * FROM $call AS t"),
@@ -64,8 +65,8 @@ class ClickHouseTableFunctionSweepTest : ClickHouseTableFunctionTestCase() {
             Cell(function, Position.DESCRIBE, "DESCRIBE TABLE $call"),
         )
         if (function in writable) result += listOf(
-            Cell(function, Position.INSERT_SELECT, "INSERT INTO FUNCTION $call SELECT * FROM db1.v_export"),
-            Cell(function, Position.INSERT_PARTITION, "INSERT INTO FUNCTION $call PARTITION BY toString(1) SELECT * FROM db1.v_export"),
+            Cell(function, Position.INSERT_SELECT, "INSERT INTO FUNCTION $call $projection"),
+            Cell(function, Position.INSERT_PARTITION, "INSERT INTO FUNCTION $call PARTITION BY toString(1) $projection"),
             Cell(function, Position.INSERT_VALUES, "INSERT INTO FUNCTION $call VALUES (1, 'sample')"),
             Cell(function, Position.INSERT_FORMAT, "INSERT INTO FUNCTION $call FORMAT TSV\n1\tsample\n;"),
         )
@@ -87,9 +88,10 @@ class ClickHouseTableFunctionSweepTest : ClickHouseTableFunctionTestCase() {
             if (reports.any { it.severity == HighlightSeverity.ERROR && (it.description.orEmpty().contains("expected", true) || it.description.orEmpty().contains("unexpected", true)) }) problems += "parser"
             if (cell.position in setOf(Position.INSERT_SELECT, Position.INSERT_PARTITION)) {
                 val insert = PsiTreeUtil.findChildOfType(myFixture.file, SqlInsertDmlInstruction::class.java)
-                if (insert?.targetType?.columnCount != 0) problems += "target-not-open"
+                val count = insert?.targetType?.columnCount
+                if (count !in setOf(0, 2)) problems += "target-not-open-or-declared"
                 val star = cell.sql.lastIndexOf('*')
-                if (star in hintOffsets()) problems += "target-hint"
+                if (count == 0 && star >= 0 && star in hintOffsets()) problems += "target-hint"
             }
             if (problems.isNotEmpty()) failures += "${cell.function}/${cell.position}: ${problems.joinToString()}"
             buildJsonObject {

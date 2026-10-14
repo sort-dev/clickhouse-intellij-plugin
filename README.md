@@ -45,16 +45,16 @@ keywords insert UPPER. Missing function signatures are not guessed.
 Scalar/aggregate names absent from the platform's static catalog resolve from the bundled/live
 inventory too. Existing platform definitions keep their original prototypes and type rules.
 Known table-function names resolve from that metadata or the datasource's live function inventory.
-INSERT table-function targets have an open column shape, so the platform cannot infer a one-column
-target from the function name or show a target-column hint. Ordinary table INSERT checks remain enabled.
+Shared table-function typing leaves external results open and derives columns from declared structures,
+query arguments and fixed metadata schemas. Ordinary table INSERT checks remain enabled.
 The catalog sweep covers all 87 bundled table functions in FROM, aliased FROM, JOIN and DESCRIBE,
 plus four INSERT forms for 22 stable writable backends. The measured 262 matrix improves from
-58/436 to 337/436 clean cells; unresolved function-name cells fall from 289 to zero and all 88
+58/436 to 436/436 clean cells; unresolved function-name cells fall from 289 to zero and all 88
 INSERT cells pass. Argument completion excludes tables for all 87 functions; nested table calls resolve.
-The strict sweep keeps shared/native parser gaps visible for joined calls, query-valued view calls,
-DESCRIBE format/merge and aliased dictionary calls. FROM result typing and argument-aware structure
-completion still need a shared native-table-call adapter. The strict tests reject the inherited
-one-column fallback and missing declared-column completions.
+The `cc62bfd` adapters clear joined calls, query-valued view arguments, DESCRIBE format/merge,
+aliased dictionary calls, open FROM results and all eight declared-structure completion cases.
+Explicit structures are checked with matching projections; structure-less exports keep the
+34-column regression. The everyday contract still exposes stock's EXISTS-as-function resolve error.
 Kotlin is optional. Resolved `@BrikkSql` / `Sql.clickhouse` strings inject
 `ClickHouseSQL` through the shared Brikk host layer, overriding the runtime's
 older `BrikkSQL` annotation. Trims and interpolation offsets are preserved;
