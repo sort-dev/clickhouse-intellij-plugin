@@ -44,6 +44,10 @@ Completion uses ClickHouse 26.5.1.1 metadata. Functions retain catalog case;
 keywords insert UPPER. Missing function signatures are not guessed.
 Scalar/aggregate names absent from the platform's static catalog resolve from the bundled/live
 inventory too. Existing platform definitions keep their original prototypes and type rules.
+Unquoted, unqualified EXISTS query predicates and comparison-quantified ALL query predicates
+also resolve, without guessed function signatures. Their query arguments use the native query
+parser, keeping real unknown functions inside subqueries visible. Ordinary calls, quoted/qualified
+names and the stock any aggregate retain their existing resolve behavior.
 Known table-function names resolve from that metadata or the datasource's live function inventory.
 Shared table-function typing leaves external results open and derives columns from declared structures,
 query arguments and fixed metadata schemas. Ordinary table INSERT checks remain enabled.
@@ -54,7 +58,7 @@ INSERT cells pass. Argument completion excludes tables for all 87 functions; nes
 The `cc62bfd` adapters clear joined calls, query-valued view arguments, DESCRIBE format/merge,
 aliased dictionary calls, open FROM results and all eight declared-structure completion cases.
 Explicit structures are checked with matching projections; structure-less exports keep the
-34-column regression. The everyday contract still exposes stock's EXISTS-as-function resolve error.
+34-column regression. The everyday contract is green, including minimal and correlated EXISTS shapes.
 
 | Sweep position | Before `cc62bfd` | After `cc62bfd` |
 | --- | ---: | ---: |
@@ -91,17 +95,19 @@ Suggested applicability additions are `ordinary-alias`, `alias-hides-slot`,
 
 Plugin Verifier 1.410 reports Compatible on DataGrip 261.24374.56 and
 262.10315.132, and IDEA 262.10968.63, 263.4732.28 and 263.5701.42.
-The current build reports 30 internal API usages, 604 experimental usages,
+The current build reports 30 internal API usages, 605 experimental usages,
 2 scheduled-removal usages and 6–8 deprecated usages. The connection-interceptor
 delegating stubs are documented in the shared support README. No compatibility,
 structure or dependency failures were reported; these API-usage notices remain visible.
 
-The 2026-10-14 round adopts brikk-sql `cc62bfd` with Kotlin helper `507fe04`.
-Kotlin-absent lanes pass 98/99 tests each on 261/262/263; Kotlin-present lanes pass
-116/117 each on 262/263. Every lane has one failure, zero errors and zero skips.
-Three of the four waiting checks now pass. The everyday-SQL test still fails because
-`SqlResolveInspection` reports `Unknown database function 'EXISTS'` in the
-`correlated-exists` and `minimal-exists` cases. No regression is excluded to claim green.
+The 2026-10-14 keyword-fix round refreshes brikk-sql through `2b95f60` with Kotlin helper `507fe04`.
+Kotlin-absent lanes pass 105/105 tests each on 261/262/263; Kotlin-present lanes pass
+123/123 each on 262/263, with zero failures, errors or skips. All four waiting checks pass.
+Keyword coverage includes EXISTS/NOT EXISTS, IN/NOT IN and ANY/ALL subqueries, CASE, CAST,
+INTERVAL, EXTRACT, TRIM(BOTH), POSITION(IN) and SUBSTRING(FROM). Negative controls assert
+real unknown-function ranges, including inside predicate queries, and preserve quoted/qualified calls.
+The shared CREATE TABLE own-column check uses ClickHouse PRIMARY KEY/ORDER BY clauses
+instead of generic UNIQUE syntax, retaining its expected undeclared-column report.
 Five-plugin isolation passes 5/5 per lane using explicit grand-unification worktree ZIPs.
 Real-server tests pass 5/5 per lane on 261/262/263 against ClickHouse 24.12.2.29 with
 JDBC 0.10.0, one task container at a time. Grid teardown waits for the session to

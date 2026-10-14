@@ -106,6 +106,7 @@ class ClickHouseRealSqlContractTest : ClickHousePlatformTestCase() {
         val variants = mapOf(
             "unnest" to "SELECT u.name, tag FROM sales.users u ARRAY JOIN ['a', 'b'] AS tag",
             "create-table-as" to "CREATE TABLE sales.big_orders ENGINE=Memory AS SELECT order_id, amount FROM sales.orders WHERE amount > 100",
+            "create-table-own-constraints" to "CREATE TABLE sales.t2 (k Int64, v Int32) ENGINE=MergeTree PRIMARY KEY k ORDER BY missing_col",
             "unquoted-case-folding" to "SELECT o.order_id, o.user_id FROM sales.orders o",
         )
         val cases = RealSqlCases.ALL.map { case ->
