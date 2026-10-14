@@ -95,12 +95,12 @@ Suggested applicability additions are `ordinary-alias`, `alias-hides-slot`,
 
 Plugin Verifier 1.410 reports Compatible on DataGrip 261.24374.56 and
 262.10315.132, and IDEA 262.10968.63, 263.4732.28 and 263.5701.42.
-The current build reports 30 internal API usages, 603 experimental usages,
+The current build reports 30 internal API usages, 610 experimental usages,
 2 scheduled-removal usages and 6–8 deprecated usages. The connection-interceptor
 delegating stubs are documented in the shared support README. No compatibility,
 structure or dependency failures were reported; these API-usage notices remain visible.
 
-The 2026-10-14 keyword-fix round refreshes brikk-sql through `2b95f60` with Kotlin helper `507fe04`.
+The 2026-10-14 cleared-model round refreshes brikk-sql through `c785084` with Kotlin helper `507fe04`.
 Kotlin-absent lanes pass 105/105 tests each on 261/262/263; Kotlin-present lanes pass
 123/123 each on 262/263, with zero failures, errors or skips. All four waiting checks pass.
 Keyword coverage includes EXISTS/NOT EXISTS, IN/NOT IN and ANY/ALL subqueries, CASE, CAST,
@@ -109,29 +109,28 @@ real unknown-function ranges, including inside predicate queries, and preserve q
 The shared CREATE TABLE own-column check uses ClickHouse PRIMARY KEY/ORDER BY clauses
 instead of generic UNIQUE syntax, retaining its expected undeclared-column report.
 Five-plugin isolation passes 5/5 per lane using explicit grand-unification worktree ZIPs.
-The cleared-model dogfood round keeps those offline lanes green. Real-server tests now pass
-5/7 per lane on 261/262/263 against ClickHouse 26.9 with JDBC 0.10.0, one task container
-at a time; the two new empty-root regressions remain enabled and fail as described below.
-Grid teardown waits for the session to
-become idle before detaching, allowing the final EDT callback to complete.
+Real-server tests pass 7/7 per lane on 261/262/263 against ClickHouse 26.9 with JDBC 0.10.0,
+one task container at a time, including both formerly failing empty-root regressions.
+Grid teardown waits for the session to become idle before detaching, allowing the final
+EDT callback to complete.
 The complete table-function sweep and open/declared typing checks pass on all three lanes.
 
 #### Clearing all introspection data
 
-Cold-root automatic discovery does not yet work. The live regressions first list real databases,
-then call the native `LocalDataSource.clearModel()` and storage update used by Clear Introspection
-Data, assert an empty schema listing, and keep a real user connection open. Both
-`SELECT * FROM db.<caret>` completion and `SELECT t.id FROM db.t t` references fail to queue
-the initial cheap database listing, so no banner, targeted load or completion refresh follows.
-The previous passing fixture had explicitly run `selectListNamespacesTask` before triggering completion.
+Cold-root discovery works with the `c785084` shared adapter. The live regressions use the native
+`LocalDataSource.clearModel()` and storage update used by Clear Introspection Data, assert empty
+source and PSI models, and keep a real user connection open. Both `SELECT * FROM db.<caret>`
+completion and `SELECT t.id FROM db.t t` references show an introspection banner and load the
+target database's tables and columns while an unrelated database stays unloaded. Each test clears
+and rediscovers twice, then asserts column insertion text and repeated missing-name requests that
+queue no more work and fabricate no model objects.
 
-Reference requests now delegate to the same shared `requestPath` entry point as completion,
-instead of first requiring the schema to be present locally. The remaining shared-kit blocker is
-`AutoIntrospectService.requestPath`: it resolves a `NamespaceTarget` from the existing model and
-returns false when the database is absent. It needs root listing followed by targeted deepening,
-model-clear invalidation, negative-result deduplication and completion refresh. No full-sync
-fallback or plugin-local discovery worker is added. The cleared-root tests fail at the first
-stage; thread, banner, refresh and nonexistent-name retry guarantees for that flow are not certified.
+Reference requests and qualified completion share `AutoIntrospectService.requestPath`. The kit
+lists root names cheaply, loads one level at a time, detects cleared models, and re-highlights and
+reopens qualified completion after discovery. There is no full-sync fallback or plugin-local
+discovery worker. ClickHouse sets `CatalogProfile.clientTransactions = false`, since its HTTP
+driver does not expose client transactions.
+
 Model-backed column insertion works. Table insertion is not proven by the
 offline fixture, which offers no table under either this dialect or stock ClickHouse.
 Real-server smoke checks live-function insertion, namespace switching, definitions

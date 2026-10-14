@@ -30,6 +30,7 @@ object ClickHouseCatalogProfile : CatalogProfile {
     override val usesCurrentNamespace = true
     override val maxDeepenDepth = 2
     override val autoIntrospect = true
+    override val clientTransactions = false
     override val dataSources get() = clickHouseDataSources
 }
 

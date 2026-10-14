@@ -102,7 +102,6 @@ import dev.sort.clickhouse.sql.ClickHouseCompletionProfile
 import dev.brikk.house.sql.intellij.catalog.CatalogSource
 import dev.brikk.house.sql.intellij.catalog.RefreshOutcome
 import dev.brikk.house.sql.intellij.catalog.isHelperRequestor
-import dev.brikk.house.sql.intellij.catalog.AutoIntrospectEngine
 import dev.brikk.house.sql.metadata.FunctionKind
 import dev.brikk.house.sql.verify.VerifyResult
 import dev.sort.clickhouse.sql.ClickHouseDialect
@@ -239,55 +238,73 @@ class ClickHouseServerVerificationTest : ClickHousePlatformTestCase() {
                 assertTrue("Cleared-model trigger has a real user connection", DatabaseConnectionManager.getInstance().activeConnections.any {
                     it.connectionPoint.dataSource.uniqueId == source.uniqueId && !isHelperRequestor(it.requestor)
                 })
-                val clear = ApplicationManager.getApplication().executeOnPooledThread(Callable {
-                    // The native ForgetModelAction uses this same clear/update pair, without a sync.
-                    source.clearModel()
-                    requireNotNull(DataSourceStorage.getProjectStorage(project)).updateDataSource(source)
-                })
-                PlatformTestUtil.waitWithEventsDispatching("Native introspection data is cleared", { clear.isDone }, 30)
-                clear.get(1, TimeUnit.SECONDS)
-                PlatformTestUtil.waitWithEventsDispatching("Cleared datasource model loads locally", {
-                    DataSourceManager.byDataSource(project, source)?.isLoading(source) != true
-                }, 30)
-                DbPsiFacade.getInstance(project).clearCaches()
-                val emptyRoot = (source.model as BasicModel).root as CHouseRoot
-                assertTrue("Clear must remove the database listing, not only its tables", emptyRoot.schemas.isEmpty())
-                val auto = project.service<ClickHouseAutoIntrospectService>()
-                val file = open(if (checkReference) "SELECT t.id FROM $namespace.sync_table t" else "SELECT * FROM $namespace.<caret>")
-                assertSame("The trigger must resolve the cleared datasource", source, auto.profile.dataSources.resolve(file).dataSource)
-                val psiRoot = (requireNotNull(DbPsiFacade.getInstance(project).findDataSource(source.uniqueId)).model as BasicModel).root as CHouseRoot
-                assertTrue("The shared path resolver must see an empty model too", psiRoot.schemas.isEmpty())
-                if (checkReference) {
-                    val annotator = LanguageAnnotators.INSTANCE.allForLanguage(file.language)
-                        .filterIsInstance<ClickHouseReferencedSchemaIntrospector>().single()
-                    val holder = AnnotationHolderImpl(AnnotationSession(file), false)
-                    PsiTreeUtil.findChildrenOfType(file, SqlReferenceExpression::class.java)
-                        .forEach { reference -> holder.runAnnotatorWithContext(reference, annotator) }
-                    holder.assertAllAnnotationsCreated()
-                } else {
-                    myFixture.completeBasic()
-                }
-                assertNotNull("Empty-root ${if (checkReference) "reference" else "completion"} must queue a cheap database listing before targeted deepening",
-                    auto.engine.state(AutoIntrospectEngine.Key(source.uniqueId, emptyList())))
-                assertNotNull("Root listing must show the registered introspection banner",
-                    ClickHouseIntrospectBannerProvider().collectNotificationData(project, file.virtualFile))
-                PlatformTestUtil.waitWithEventsDispatching("Only the referenced database loads after root listing", {
-                    auto.pending(file.virtualFile) == null &&
-                        ((source.model as BasicModel).root as CHouseRoot).schemas.get(namespace)?.tables?.get("sync_table")?.columns?.size() == 2
-                }, 60)
-                assertTrue("An unrelated database must remain un-introspected",
-                    requireNotNull(((source.model as BasicModel).root as CHouseRoot).schemas.get(deferredNamespace)).tables.isEmpty())
-                open("SELECT t.<caret> FROM $namespace.sync_table t")
-                val items = myFixture.completeBasic().orEmpty().filter { it.lookupString in setOf("id", "label") }
-                assertSameElements(listOf("id", "label"), items.map { it.lookupString })
-                for (item in items) {
+                fun clearAndDiscover() {
+                    val clear = ApplicationManager.getApplication().executeOnPooledThread(Callable {
+                        // The native ForgetModelAction uses this same clear/update pair, without a sync.
+                        source.clearModel()
+                        requireNotNull(DataSourceStorage.getProjectStorage(project)).updateDataSource(source)
+                    })
+                    PlatformTestUtil.waitWithEventsDispatching("Native introspection data is cleared", { clear.isDone }, 30)
+                    clear.get(1, TimeUnit.SECONDS)
+                    PlatformTestUtil.waitWithEventsDispatching("Cleared datasource model loads locally", {
+                        DataSourceManager.byDataSource(project, source)?.isLoading(source) != true
+                    }, 30)
+                    DbPsiFacade.getInstance(project).clearCaches()
+                    val emptyRoot = (source.model as BasicModel).root as CHouseRoot
+                    assertTrue("Clear must remove the database listing, not only its tables", emptyRoot.schemas.isEmpty())
+                    val auto = project.service<ClickHouseAutoIntrospectService>()
+                    val file = open(if (checkReference) "SELECT t.id FROM $namespace.sync_table t" else "SELECT * FROM $namespace.<caret>")
+                    assertSame("The trigger must resolve the cleared datasource", source, auto.profile.dataSources.resolve(file).dataSource)
+                    val psiRoot = (requireNotNull(DbPsiFacade.getInstance(project).findDataSource(source.uniqueId)).model as BasicModel).root as CHouseRoot
+                    assertTrue("The shared path resolver must see an empty model too", psiRoot.schemas.isEmpty())
+                    if (checkReference) {
+                        val annotator = LanguageAnnotators.INSTANCE.allForLanguage(file.language)
+                            .filterIsInstance<ClickHouseReferencedSchemaIntrospector>().single()
+                        val holder = AnnotationHolderImpl(AnnotationSession(file), false)
+                        PsiTreeUtil.findChildrenOfType(file, SqlReferenceExpression::class.java)
+                            .forEach { reference -> holder.runAnnotatorWithContext(reference, annotator) }
+                        holder.assertAllAnnotationsCreated()
+                    } else {
+                        myFixture.completeBasic()
+                    }
+                    assertNotNull("Empty-root ${if (checkReference) "reference" else "completion"} must queue discovery before targeted deepening",
+                        auto.pending(file.virtualFile))
+                    assertNotNull("Root listing must show the registered introspection banner",
+                        ClickHouseIntrospectBannerProvider().collectNotificationData(project, file.virtualFile))
+                    PlatformTestUtil.waitWithEventsDispatching("Only the referenced database loads after root listing", {
+                        auto.pending(file.virtualFile) == null &&
+                            ((source.model as BasicModel).root as CHouseRoot).schemas.get(namespace)?.tables?.get("sync_table")?.columns?.size() == 2
+                    }, 60)
+                    assertTrue("An unrelated database must remain un-introspected",
+                        requireNotNull(((source.model as BasicModel).root as CHouseRoot).schemas.get(deferredNamespace)).tables.isEmpty())
                     open("SELECT t.<caret> FROM $namespace.sync_table t")
-                    myFixture.completeBasic()
-                    val lookup = requireNotNull(com.intellij.codeInsight.lookup.LookupManager.getActiveLookup(myFixture.editor))
-                    lookup.setCurrentItem(lookup.items.single { it.lookupString == item.lookupString })
-                    myFixture.finishLookup(Lookup.NORMAL_SELECT_CHAR)
-                    assertEquals("SELECT t.${item.lookupString} FROM $namespace.sync_table t", myFixture.editor.document.text)
+                    val items = myFixture.completeBasic().orEmpty().filter { it.lookupString in setOf("id", "label") }
+                    assertSameElements(listOf("id", "label"), items.map { it.lookupString })
+                    for (item in items) {
+                        open("SELECT t.<caret> FROM $namespace.sync_table t")
+                        myFixture.completeBasic()
+                        val lookup = requireNotNull(com.intellij.codeInsight.lookup.LookupManager.getActiveLookup(myFixture.editor))
+                        lookup.setCurrentItem(lookup.items.single { it.lookupString == item.lookupString })
+                        myFixture.finishLookup(Lookup.NORMAL_SELECT_CHAR)
+                        assertEquals("SELECT t.${item.lookupString} FROM $namespace.sync_table t", myFixture.editor.document.text)
+                    }
                 }
+                clearAndDiscover()
+                clearAndDiscover() // Completed claims from the first round must not survive a clear.
+                val auto = project.service<ClickHouseAutoIntrospectService>()
+                assertFalse("ClickHouse does not expose client transactions", auto.profile.clientTransactions)
+                val missing = "${namespace}_missing"
+                val missingFile = open("SELECT * FROM $missing.<caret>")
+                repeat(3) {
+                    myFixture.completeBasic()
+                    assertFalse("Unknown databases must not start another listing", auto.requestPath(missingFile, listOf(missing)))
+                    assertFalse("Unknown tables in a loaded database must not restart introspection",
+                        auto.requestPath(missingFile, listOf(namespace, "missing_table")))
+                    assertNull(auto.pending(missingFile.virtualFile))
+                }
+                val currentRoot = (source.model as BasicModel).root as CHouseRoot
+                assertNull("Missing databases must not be fabricated", currentRoot.schemas.get(missing))
+                assertNull("Missing tables must not be fabricated", requireNotNull(currentRoot.schemas.get(namespace)).tables.get("missing_table"))
             }
             return
         }
