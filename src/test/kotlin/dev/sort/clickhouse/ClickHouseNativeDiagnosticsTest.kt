@@ -62,7 +62,7 @@ class ClickHouseNativeDiagnosticsTest : ClickHousePlatformTestCase() {
     }
 
     fun testServerAcceptanceClearsALocalFalsePositiveInTheVerifiedStatement() {
-        val sql = "INSERT INTO events FORMAT Values (1, 'value');"
+        val sql = "KILL QUERY WHERE 1;"
         assertNotEmpty(annotations(sql))
         assertEmpty(annotations(sql, RecordingVerifier { VerifyResult.Accepted }))
     }

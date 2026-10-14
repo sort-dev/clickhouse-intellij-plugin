@@ -6,7 +6,6 @@ import com.intellij.lang.Language
 import dev.brikk.house.sql.diagnostics.localParseDiagnostics
 import dev.brikk.house.sql.dialects.Dialects
 import dev.brikk.house.sql.generator.UnsupportedError
-import dev.brikk.house.sql.ast.Command
 import dev.brikk.house.sql.intellij.catalog.DialectDataSourceResolver
 import dev.brikk.house.sql.intellij.diagnostics.DataSourceVerification
 import dev.brikk.house.sql.intellij.diagnostics.NativeErrorAnnotator
@@ -32,7 +31,7 @@ object ClickHouseNativeErrorProfile : NativeErrorProfile {
     override val dialect = "clickhouse"
     override val label = "ClickHouse"
     override val localParser = true
-    override val reportsPsiErrors = true
+    override val reportsPsiErrors = false
     override val hostSql get() = ClickHouseHostSql
     override val injectionHosts get() = setOfNotNull(Language.findLanguageByID("kotlin"))
 
@@ -61,14 +60,7 @@ object ClickHouseNativeErrorProfile : NativeErrorProfile {
         if (statement.hasPipe && ClickHousePipeDialect.isEnabled(file.project)) {
             // PIPE is editor syntax, not server SQL. Its execution still uses shared lowering.
             localParseDiagnostics(script, statement.start until statement.end, dialect, ProgressManager::checkCanceled)
-        } else {
-            // Keep one combined diagnostic for invalid SQL; core-accepted syntax must not inherit
-            // errors from the stock grammar's lazily parsed function/query arguments.
-            val parsed = runCatching {
-                Dialects.forName(dialect).parseOne(script.substring(statement.start, statement.end))
-            }.getOrNull()
-            if (parsed != null && parsed !is Command) emptyList() else null
-        }
+        } else null
 }
 
 class ClickHouseNativeErrorAnnotator : NativeErrorAnnotator(ClickHouseNativeErrorProfile)

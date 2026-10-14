@@ -28,7 +28,6 @@
         <lang.quoteHandler language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.sql.ClickHouseQuoteHandler"/>
         <externalAnnotator language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.validation.ClickHouseNativeErrorAnnotator"/>
         <highlightErrorFilter implementation="dev.sort.clickhouse.sql.ClickHouseSubstrateErrorFilter"/>
-        <highlightErrorFilter implementation="dev.sort.clickhouse.validation.ClickHouseNativePsiFilter"/>
         <highlightErrorFilter implementation="dev.sort.clickhouse.brikk.ClickHousePlaceholderErrorFilter"/>
         <database.runConsoleAvailable implementation="dev.sort.clickhouse.brikk.ClickHouseRunConsoleVeto"/>
         <sql.resolveExtension implementation="dev.sort.clickhouse.brikk.ClickHouseRelationResolveExtension"/>
