@@ -21,10 +21,13 @@ import com.intellij.sql.psi.SqlInsertDmlInstruction
 import com.intellij.sql.psi.SqlReference
 import com.intellij.sql.psi.SqlReferenceExpression
 import com.intellij.sql.psi.SqlScopeProcessor
-import com.intellij.sql.psi.impl.SqlInsertDmlInstructionImpl
-import com.intellij.sql.psi.SqlTableType
 import com.intellij.sql.psi.impl.SqlResolveExtension
-import com.intellij.sql.psi.impl.SqlTableTypeBase
+import com.intellij.sql.psi.impl.SqlFunctionCallExpressionImpl
+import com.intellij.sql.psi.impl.SqlDasTypeAwareDeepRecursiveElement
+import com.intellij.database.types.DasType
+import com.intellij.database.types.DasTypeSystemBase
+import dev.brikk.house.sql.intellij.relation.RelationTableTypes
+import dev.sort.clickhouse.brikk.ClickHouseRelationProfile
 import dev.brikk.house.sql.metadata.FunctionKind
 import dev.sort.clickhouse.ClickHouseDbms
 import java.util.concurrent.ConcurrentHashMap
@@ -35,16 +38,20 @@ class ClickHouseTableFunctionResolveExtension : SqlResolveExtension {
 
     override fun process(reference: SqlReference, processor: SqlScopeProcessor): Boolean {
         val name = reference.element as? SqlReferenceExpression ?: return true
-        val call = name.parent as? SqlFunctionCallExpression ?: return true
-        if (call.nameElement !== name || name.qualifierExpression != null) return true
+        val call = name.parent as? SqlFunctionCallExpression
+        if (name.qualifierExpression != null) return true
         val file = name.containingFile
         if (file.language !== ClickHouseDialect) return true
-        if (!isTablePosition(call)) return true
+        val tableReference = name.referenceElementType.targetKind == ObjectKind.TABLE &&
+            file.text.drop(name.textRange.endOffset).dropWhile(Char::isWhitespace).startsWith('(')
+        if (!tableReference && (call == null || call.nameElement !== name || !isTablePosition(call))) return true
         val function = ClickHouseCompletionProfile.functions(file).firstOrNull {
             it.kind == FunctionKind.TABLE_VALUED && it.name.equals(name.name, ignoreCase = true)
         } ?: return true
-        val symbol = symbols.computeIfAbsent(function.name) {
-            BuiltinFunction(it, null, emptyMap(), emptyList(), ClickHouseDbms.CLICKHOUSE_BRIKK)
+        val symbol = symbols.computeIfAbsent("${if (tableReference) "table" else "call"}:${function.name}") {
+            object : BuiltinFunction(function.name, null, emptyMap(), emptyList(), ClickHouseDbms.CLICKHOUSE_BRIKK) {
+                override fun getKind(): ObjectKind = if (tableReference) ObjectKind.TABLE else ObjectKind.ROUTINE
+            }
         }
         return processor.execute(symbol, ResolveState.initial())
     }
@@ -89,18 +96,13 @@ class ClickHouseElementFactory(
     private val stock: SqlElementFactoryBase = CHouseParserDefinition().elementFactory,
 ) : SqlElementFactoryBase by stock {
     override fun createElementNode(type: IElementType): CompositeElement? =
-        if (type == SqlCompositeElementTypes.SQL_INSERT_DML_INSTRUCTION) ClickHouseInsertInstruction(type)
+        if (type == SqlCompositeElementTypes.SQL_FUNCTION_CALL) ClickHouseFunctionCall(type)
         else stock.createElementNode(type)
 }
 
-private class ClickHouseInsertInstruction(type: IElementType) : SqlInsertDmlInstructionImpl(type) {
-    override fun getTargetType(): SqlTableType {
-        val target = targetExpression
-        if (target != null && PsiTreeUtil.findChildOfType(target, SqlFunctionCallExpression::class.java, false) != null) {
-            // The platform uses its empty table type for an unresolved/open shape. A scalar UNKNOWN
-            // instead becomes one synthetic column named after the call, causing false checks/hints.
-            return SqlTableTypeBase.EMPTY_TABLE
-        }
-        return super.getTargetType()
-    }
+private class ClickHouseFunctionCall(type: IElementType) : SqlFunctionCallExpressionImpl(type) {
+    override suspend fun DeepRecursiveScope<SqlDasTypeAwareDeepRecursiveElement, DasType>.computeDasType(): DasType =
+        RelationTableTypes.ofTableFunction(this@ClickHouseFunctionCall, ClickHouseRelationProfile)
+            ?: nameElement?.let { createFunctionReturnType(it, this@ClickHouseFunctionCall) }
+            ?: DasTypeSystemBase.UNKNOWN
 }

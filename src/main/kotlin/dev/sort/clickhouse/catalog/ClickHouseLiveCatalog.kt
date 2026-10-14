@@ -15,6 +15,7 @@ import dev.brikk.house.sql.intellij.catalog.RefreshLiveCatalogAction
 import dev.brikk.house.sql.intellij.catalog.StatementEffect
 import dev.brikk.house.sql.intellij.catalog.StatementHeadDetector
 import dev.brikk.house.sql.intellij.catalog.StatementRule
+import dev.brikk.house.sql.intellij.catalog.StatementRules
 import dev.brikk.house.sql.metadata.CLICKHOUSE_METADATA
 import dev.sort.clickhouse.ClickHouseDbms
 import kotlinx.coroutines.CoroutineScope
@@ -49,9 +50,7 @@ object ClickHouseExecutionObserverProfile : ExecutionObserverProfile {
     override val statements = StatementHeadDetector(listOf(
         StatementRule("CREATE [OR REPLACE] FUNCTION", StatementEffect.FunctionInventory()),
         StatementRule("DROP FUNCTION", StatementEffect.FunctionInventory()),
-        StatementRule("CREATE DATABASE", StatementEffect.Namespace(1)),
-        StatementRule("DROP DATABASE", StatementEffect.Namespace(1)),
-    ), "clickhouse")
+    ) + StatementRules.CLICKHOUSE, "clickhouse")
 }
 
 @Service(Service.Level.PROJECT)
