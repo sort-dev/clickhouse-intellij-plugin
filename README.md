@@ -42,6 +42,8 @@ Build conventions are vendored with
 
 Completion uses ClickHouse 26.5.1.1 metadata. Functions retain catalog case;
 keywords insert UPPER. Missing function signatures are not guessed.
+Scalar/aggregate names absent from the platform's static catalog resolve from the bundled/live
+inventory too. Existing platform definitions keep their original prototypes and type rules.
 Known table-function names resolve from that metadata or the datasource's live function inventory.
 INSERT table-function targets have an open column shape, so the platform cannot infer a one-column
 target from the function name or show a target-column hint. Ordinary table INSERT checks remain enabled.
