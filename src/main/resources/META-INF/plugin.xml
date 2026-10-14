@@ -38,6 +38,7 @@
         <annotator language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.brikk.ClickHouseRelationAnnotator"/>
         <annotator language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.sql.ClickHouseMaskedSpanAnnotator"/>
         <completion.contributor language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.sql.ClickHouseCompletionContributor" id="clickhouse.metadata" order="first"/>
+        <completion.contributor language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.sql.ClickHouseTableFunctionArgumentCompletion" order="first, before clickhouse.metadata"/>
         <completion.confidence language="ClickHouseSQL" implementation="dev.sort.clickhouse.sql.ClickHouseCompletionConfidence" order="first"/>
         <completion.contributor language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.pipe.ClickHouseStageCompletion" order="first, before clickhouse.metadata"/>
         <completion.contributor language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.catalog.ClickHouseQualifiedPathIntrospectContributor" order="first, before clickhouse.metadata"/>

@@ -11,6 +11,10 @@ import com.intellij.database.dataSource.LocalDataSourceManager
 import com.intellij.database.dialects.clickhouse.model.CHouseRoot
 import com.intellij.database.model.ModelFactory
 import com.intellij.database.model.ObjectKind
+import com.intellij.database.model.ObjectName
+import com.intellij.database.util.TreePattern
+import com.intellij.sql.dialects.SqlImportUtil
+import com.intellij.sql.dialects.SqlResolveMappings
 import com.intellij.database.psi.DbPsiFacade
 import com.intellij.database.types.DasSimpleTypeClass
 import com.intellij.database.types.DasType
@@ -27,8 +31,8 @@ import dev.brikk.house.sql.intellij.testing.setSqlDialectMapping
 import dev.sort.clickhouse.sql.ClickHouseDialect
 import java.lang.reflect.Proxy
 
-class ClickHouseInsertTableFunctionTest : ClickHousePlatformTestCase() {
-    private val export = """
+abstract class ClickHouseTableFunctionTestCase : ClickHousePlatformTestCase() {
+    protected val export = """
         INSERT INTO FUNCTION s3('https://example.invalid/bucket/path/{_partition_id}.parquet', 'KEY', 'SECRET', 'Parquet')
         PARTITION BY concat('year=', toString(toYear(toDateTime(ts))), '/')
         SELECT *
@@ -44,7 +48,10 @@ class ClickHouseInsertTableFunctionTest : ClickHousePlatformTestCase() {
             .forEach { myFixture.enableInspections(it.instantiateTool() as LocalInspectionTool) }
     }
 
-    private fun open(sql: String, stock: Boolean = false) {
+    private val created = mutableMapOf<Boolean, LocalDataSource>()
+
+    private fun prepareSource(stock: Boolean) {
+        if (stock in created) return
         val dbms = if (stock) Dbms.CLICKHOUSE else ClickHouseDbms.CLICKHOUSE_BRIKK
         val model = ModelFactory.BLACK_HOLE.createModel(dbms)
         val schema = (model.root as CHouseRoot).schemas.createOrGet("db1")
@@ -70,16 +77,23 @@ class ClickHouseInsertTableFunctionTest : ClickHousePlatformTestCase() {
         }
         val sources = LocalDataSourceManager.getInstance(project)
         sources.addDataSource(source)
+        created[stock] = source
         Disposer.register(testRootDisposable) { sources.removeDataSource(source); DbPsiFacade.getInstance(project).clearCaches() }
         DbPsiFacade.getInstance(project).clearCaches()
-        val file = myFixture.configureByText("sanitized-export.sql", sql)
-        val language: SqlLanguageDialect = if (stock) CHouseDialect.INSTANCE else ClickHouseDialect
-        setSqlDialectMapping(project, file.virtualFile, language)
-        myFixture.configureFromExistingVirtualFile(file.virtualFile)
         assertEquals(34, view.columns.size())
     }
 
-    private fun hintOffsets(): List<Int> {
+    protected fun open(sql: String, stock: Boolean = false) {
+        prepareSource(stock)
+        val file = myFixture.configureByText("sanitized-export.sql", sql)
+        val language: SqlLanguageDialect = if (stock) CHouseDialect.INSTANCE else ClickHouseDialect
+        setSqlDialectMapping(project, file.virtualFile, language)
+        SqlResolveMappings.getInstance(project).setMapping(file.virtualFile,
+            TreePattern(SqlImportUtil.createDataSources(arrayOf(ObjectName.quoted(requireNotNull(created[stock]).uniqueId)))))
+        myFixture.configureFromExistingVirtualFile(file.virtualFile)
+    }
+
+    protected fun hintOffsets(): List<Int> {
         val positions = mutableListOf<Int>()
         val sink = Proxy.newProxyInstance(InlayTreeSink::class.java.classLoader, arrayOf(InlayTreeSink::class.java)) { _, method, args ->
             when (method.name) {
@@ -92,7 +106,9 @@ class ClickHouseInsertTableFunctionTest : ClickHousePlatformTestCase() {
         PsiTreeUtil.collectElements(myFixture.file) { true }.forEach { collector.collectFromElement(it, sink) }
         return positions
     }
+}
 
+class ClickHouseInsertTableFunctionTest : ClickHouseTableFunctionTestCase() {
     fun testSanitizedExportHasNoFalseProblemsOrTargetHint() {
         open(export)
         assertEmpty(myFixture.doHighlighting(HighlightSeverity.WARNING))

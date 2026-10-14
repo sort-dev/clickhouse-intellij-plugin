@@ -45,6 +45,14 @@ keywords insert UPPER. Missing function signatures are not guessed.
 Known table-function names resolve from that metadata or the datasource's live function inventory.
 INSERT table-function targets have an open column shape, so the platform cannot infer a one-column
 target from the function name or show a target-column hint. Ordinary table INSERT checks remain enabled.
+The catalog sweep covers all 87 bundled table functions in FROM, aliased FROM, JOIN and DESCRIBE,
+plus four INSERT forms for 22 stable writable backends. The measured 262 matrix improves from
+58/436 to 337/436 clean cells; unresolved function-name cells fall from 289 to zero and all 88
+INSERT cells pass. Argument completion excludes tables for all 87 functions; nested table calls resolve.
+The strict sweep keeps shared/native parser gaps visible for joined calls, query-valued view calls,
+DESCRIBE format/merge and aliased dictionary calls. FROM result typing and argument-aware structure
+completion still need a shared native-table-call adapter. The strict tests reject the inherited
+one-column fallback and missing declared-column completions.
 Kotlin is optional. Resolved `@BrikkSql` / `Sql.clickhouse` strings inject
 `ClickHouseSQL` through the shared Brikk host layer, overriding the runtime's
 older `BrikkSQL` annotation. Trims and interpolation offsets are preserved;
@@ -74,12 +82,14 @@ The shared adapters account for 15 internal API usages in `GenericJdbcIntrospect
 delegating stubs are documented in the shared support README. No compatibility,
 structure or dependency failures were reported; these API-usage notices remain visible.
 
-The runtime smoke gate passes with brikk-sql `12162f8` and Kotlin helper
+The earlier accepted runtime smoke gate passed with brikk-sql `12162f8` and Kotlin helper
 `507fe04`. Valid INSERT FORMAT payloads no longer receive a false local-parser
 error, and Kotlin relation facts link correctly. All regressions remain enabled.
 Kotlin-absent lanes pass 84 tests each on 261/262/263; Kotlin-present lanes pass
 102 each on 262/263. Five-plugin isolation passes 5 tests per lane and real-server
 smoke passes 2 per lane on 261/262/263, with no failures, errors or skips.
+The subsequent strict everyday-SQL contract and table-function sweep expose documented
+shared/native gaps and remain enabled; their outstanding failures are not a green gate.
 Model-backed column insertion works. Table insertion is not proven by the
 offline fixture, which offers no table under either this dialect or stock ClickHouse.
 Real-server smoke checks live-function insertion, namespace switching, definitions

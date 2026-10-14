@@ -1,6 +1,14 @@
 package dev.sort.clickhouse.sql
 
 import com.intellij.psi.ResolveState
+import com.intellij.codeInsight.completion.CompletionContributor
+import com.intellij.codeInsight.completion.CompletionParameters
+import com.intellij.codeInsight.completion.CompletionResultSet
+import com.intellij.database.model.DasObject
+import com.intellij.database.model.ObjectKind
+import com.intellij.database.symbols.DasSymbol
+import com.intellij.sql.psi.SqlResolveResult
+import com.intellij.sql.psi.SqlQueryExpression
 import com.intellij.psi.impl.source.tree.CompositeElement
 import com.intellij.psi.tree.IElementType
 import com.intellij.psi.util.PsiTreeUtil
@@ -47,8 +55,35 @@ private fun isInsertTarget(call: SqlFunctionCallExpression): Boolean {
     return insert.targetExpression?.let { PsiTreeUtil.isAncestor(it, call, false) } == true
 }
 
-private fun isTablePosition(call: SqlFunctionCallExpression): Boolean =
-    call.parent?.node?.elementType == SqlCompositeElementTypes.SQL_TABLE_PROCEDURE_CALL_EXPRESSION || isInsertTarget(call)
+private fun isTablePosition(call: SqlFunctionCallExpression): Boolean {
+    if (call.parent?.node?.elementType == SqlCompositeElementTypes.SQL_TABLE_PROCEDURE_CALL_EXPRESSION || isInsertTarget(call)) return true
+    val outer = PsiTreeUtil.getParentOfType(call, SqlFunctionCallExpression::class.java) ?: return false
+    val name = outer.nameElement?.name ?: return false
+    return ClickHouseCompletionProfile.functions(call.containingFile).any { it.kind == FunctionKind.TABLE_VALUED && it.name == name } && isTablePosition(outer)
+}
+
+/** Table-name completion is not a valid fallback for a table function's expression arguments. */
+class ClickHouseTableFunctionArgumentCompletion : CompletionContributor() {
+    override fun fillCompletionVariants(parameters: CompletionParameters, result: CompletionResultSet) {
+        if (parameters.originalFile.language !== ClickHouseDialect) return
+        val call = generateSequence(PsiTreeUtil.getParentOfType(parameters.position, SqlFunctionCallExpression::class.java)) {
+            PsiTreeUtil.getParentOfType(it, SqlFunctionCallExpression::class.java)
+        }.firstOrNull { candidate ->
+            candidate.parameterList?.textRange?.contains(parameters.offset) == true && isTablePosition(candidate)
+        } ?: return
+        val query = PsiTreeUtil.getParentOfType(parameters.position, SqlQueryExpression::class.java)
+        if (query != null && PsiTreeUtil.isAncestor(call.parameterList, query, false)) return
+        result.runRemainingContributors(parameters) { completion ->
+            val item = completion.lookupElement
+            val target = (item.`object` as? SqlResolveResult)?.targetSymbol ?: item.`object` ?: item.psiElement
+            val kind = ((target as? DasSymbol)?.dasObject ?: target as? DasObject)?.kind
+            if (kind !in setOf(ObjectKind.TABLE, ObjectKind.VIEW, ObjectKind.MAT_VIEW, ObjectKind.SCHEMA, ObjectKind.DATABASE)) {
+                result.passResult(completion)
+            }
+        }
+        result.stopHere()
+    }
+}
 
 class ClickHouseElementFactory(
     private val stock: SqlElementFactoryBase = CHouseParserDefinition().elementFactory,

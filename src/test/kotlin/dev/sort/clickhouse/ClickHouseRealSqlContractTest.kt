@@ -122,7 +122,8 @@ class ClickHouseRealSqlContractTest : ClickHousePlatformTestCase() {
                     val sql = case.sql.replace("ext_catalog.archive_db.facts", "archive_db.facts")
                         .replace("ts AS ts, * EXCEPT (ts), 0 AS k", "ts AS ts, 0 AS k, * EXCEPT (ts)")
                     case.copy(needs = case.needs - RealSqlFeature.THREE_PART_NAMES,
-                        variants = case.variants + ("clickhouse" to sql))
+                        variants = case.variants + ("clickhouse" to sql),
+                        reported = case.reported.map { it.replace("ext_catalog.archive_db.facts", "archive_db.facts") }.toSet())
                 }
                 RealSqlContract(target).checkModelStates(cases = external)
                 return emptyList()
