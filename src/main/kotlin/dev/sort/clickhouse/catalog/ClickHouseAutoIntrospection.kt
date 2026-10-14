@@ -2,8 +2,6 @@ package dev.sort.clickhouse.catalog
 
 import com.intellij.database.model.ObjectKind
 import com.intellij.database.dataSource.DatabaseConnectionManager
-import com.intellij.database.model.basic.BasicModel
-import com.intellij.database.dialects.clickhouse.model.CHouseRoot
 import com.intellij.lang.annotation.Annotator
 import com.intellij.lang.annotation.AnnotationHolder
 import com.intellij.openapi.project.DumbAware
@@ -18,7 +16,6 @@ import dev.brikk.house.sql.intellij.catalog.CatalogProfile
 import dev.brikk.house.sql.intellij.catalog.DialectDataSourceResolver
 import dev.brikk.house.sql.intellij.catalog.IntrospectBannerProvider
 import dev.brikk.house.sql.intellij.catalog.QualifiedPathIntrospectContributor
-import dev.brikk.house.sql.intellij.catalog.NamespaceTarget
 import dev.brikk.house.sql.intellij.catalog.isHelperRequestor
 import dev.sort.clickhouse.ClickHouseDbms
 import kotlinx.coroutines.CoroutineScope
@@ -57,8 +54,6 @@ class ClickHouseReferencedSchemaIntrospector : Annotator, DumbAware {
         if (DatabaseConnectionManager.getInstance().activeConnections.none {
                 it.connectionPoint.dataSource.uniqueId == source.uniqueId && !isHelperRequestor(it.requestor)
             }) return
-        val root = (source.model as? BasicModel)?.root as? CHouseRoot ?: return
-        val schema = root.schemas.get(name) ?: return
-        file.project.service<ClickHouseAutoIntrospectService>().request(file, source, NamespaceTarget(listOf(name), schema))
+        file.project.service<ClickHouseAutoIntrospectService>().requestPath(file, listOf(name))
     }
 }
