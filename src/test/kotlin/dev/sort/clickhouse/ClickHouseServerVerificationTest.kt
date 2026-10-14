@@ -7,11 +7,17 @@ import com.intellij.database.dataSource.DatabaseDriverImpl
 import com.intellij.database.dataSource.DatabaseDriverManager
 import com.intellij.database.dataSource.LocalDataSource
 import com.intellij.database.dataSource.LocalDataSourceManager
+import com.intellij.database.dataSource.DataSourceSyncManager
+import com.intellij.database.util.LoaderContext
+import com.intellij.database.util.IntrospectionScopeUpdater
+import com.intellij.database.psi.DbPsiFacade
+import com.intellij.database.psi.DataSourceManager
 import com.intellij.database.dataSource.connection.ConnectionRequestor
 import com.intellij.database.dialects.DatabaseDialects
 import com.intellij.database.model.ObjectKind
 import com.intellij.database.model.ModelFactory
 import com.intellij.database.model.DasObject
+import com.intellij.database.model.basic.BasicModel
 import com.intellij.database.dialects.clickhouse.model.CHouseRoot
 import com.intellij.util.PairConsumer
 import com.intellij.database.util.ObjectPath
@@ -55,6 +61,73 @@ import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.runBlocking
 
 class ClickHouseServerVerificationTest : ClickHousePlatformTestCase() {
+    fun testNativeDataSourceSyncAndNamespaceSelection() {
+        val url = requireNotNull(System.getenv("BRIKK_CLICKHOUSE_URL")?.takeIf(String::isNotBlank))
+        val endpoint = URI.create("http:" + url.removePrefix("jdbc:clickhouse:"))
+        val admin = URI.create("http://${endpoint.rawAuthority}/")
+        fun query(sql: String) = HttpClient.newHttpClient().use { client ->
+            val response = client.send(HttpRequest.newBuilder(admin).POST(HttpRequest.BodyPublishers.ofString(sql)).build(), HttpResponse.BodyHandlers.ofString())
+            check(response.statusCode() == 200) { response.body() }
+            response.body()
+        }
+        val namespace = "native_sync_${UUID.randomUUID().toString().replace("-", "") }"
+        val user = "${namespace}_user"
+        val password = "native-sync-synthetic-password"
+        query("CREATE USER $user IDENTIFIED WITH plaintext_password BY '$password'")
+        Disposer.register(testRootDisposable) { query("DROP USER IF EXISTS $user") }
+        query("GRANT SELECT, SHOW DATABASES, SHOW TABLES, SHOW COLUMNS, SHOW DICTIONARIES ON *.* TO $user")
+        query("CREATE DATABASE $namespace")
+        Disposer.register(testRootDisposable) { query("DROP DATABASE IF EXISTS $namespace") }
+        query("CREATE TABLE $namespace.sync_table (id UInt64, label String) ENGINE=Memory")
+        val jar = Path.of(System.getenv("BRIKK_CLICKHOUSE_DRIVER") ?: System.getProperty("clickhouse.driver.fixture"))
+        val drivers = DatabaseDriverManager.getInstance()
+        val driver = requireNotNull(drivers.getDriver("clickhouse-sortdev")).copy("native-sync-driver-$namespace", true) as DatabaseDriverImpl
+        driver.artifacts = emptyList()
+        driver.additionalClasspathElements = listOf(jar, jar.resolveSibling("slf4j-api-2.0.7.jar"))
+            .flatMap { SimpleClasspathElementFactory.createElements("jar://$it!/") }
+        drivers.updateDriver(driver)
+        Disposer.register(testRootDisposable) { drivers.removeDriver(driver) }
+        val source = LocalDataSource().apply {
+            name = "Native ClickHouse sync"
+            databaseDriver = driver
+            this.url = url + (if ('?' in url) "&" else "?") + "compress=false&decompress=false&ignore_unknown_config_key=true"
+            username = user
+            passwordStorage = LocalDataSource.Storage.MEMORY
+            isAutoSynchronize = false
+            isKeepAlive = false
+            model = ModelFactory.BLACK_HOLE.createModel(ClickHouseDbms.CLICKHOUSE_BRIKK)
+        }
+        DatabaseCredentials.getInstance().setPassword(source, OneTimeString(password))
+        val sources = LocalDataSourceManager.getInstance(project)
+        sources.addDataSource(source)
+        Disposer.register(testRootDisposable) { sources.removeDataSource(source) }
+        assertSame(ClickHouseDbms.CLICKHOUSE_BRIKK, source.dbms)
+        PlatformTestUtil.waitWithEventsDispatching("ClickHouse datasource model loaded", {
+            DataSourceManager.byDataSource(project, source)?.isLoading(source) != true
+        }, 30)
+        fun sync(context: LoaderContext) {
+            val task = ApplicationManager.getApplication().executeOnPooledThread(Callable {
+                runBlocking { DataSourceSyncManager.getInstance().tryPerformSync(context, false, false) }
+            })
+            try {
+                PlatformTestUtil.waitWithEventsDispatching("Native ClickHouse introspection", { task.isDone }, 90)
+                assertNotNull("Sync must not be skipped", task.get(1, TimeUnit.SECONDS))
+            } finally {
+                if (!task.isDone) task.cancel(true)
+            }
+        }
+        sync(LoaderContext.selectListNamespacesTask(project, source))
+        val root = (source.model as BasicModel).root as CHouseRoot
+        assertNotNull(root.schemas.get(namespace))
+        val path = ObjectPath.create(namespace, ObjectKind.SCHEMA)
+        source.introspectionScope = IntrospectionScopeUpdater().toAdd(path).updateVisibleNamespaces(source.introspectionScope, source.model as BasicModel)
+        sync(LoaderContext.selectGeneralTask(project, source))
+        DbPsiFacade.getInstance(project).clearCaches()
+        val schema = requireNotNull(((source.model as BasicModel).root as CHouseRoot).schemas.get(namespace))
+        val table = requireNotNull(schema.tables.get("sync_table"))
+        assertSameElements(listOf("id", "label"), table.columns.map { it.name })
+    }
+
     fun testCatalogHarvesterReadsOnlySmallSystemInventories() {
         val url = requireNotNull(System.getenv("BRIKK_CLICKHOUSE_URL")?.takeIf(String::isNotBlank))
         val jar = Path.of(System.getenv("BRIKK_CLICKHOUSE_DRIVER") ?: System.getProperty("clickhouse.driver.fixture"))

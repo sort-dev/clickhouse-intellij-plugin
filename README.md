@@ -19,6 +19,9 @@ Database switching and console namespace read-back retain stock ClickHouse behav
 With JDBC 0.9.8, raw USE does not persist across HTTP requests; the stock namespace picker uses JDBC setSchema.
 The shared one-level auto-introspection kit loads a listed database when completion
 needs its children, with targeted refreshes and a per-file progress banner.
+Native introspection uses the stock ClickHouse factory through a narrow connection-family
+adapter, since extension fallback alone does not satisfy its DBMS identity check.
+The ClickHouse dialect and model facade are registered directly for `CLICKHOUSE_BRIKK`.
 Object sources use shared SHOW CREATE reads for databases, tables, views,
 materialized views and dictionaries. Dictionary objects use the stock model's
 Dictionary engine marker; materialized views use SHOW CREATE TABLE.
