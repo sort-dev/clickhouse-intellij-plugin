@@ -347,6 +347,9 @@ class ClickHouseServerVerificationTest : ClickHousePlatformTestCase() {
             assertTrue(exported, exported.contains("7") && exported.contains("native path smoke"))
         } finally {
             val client = (editor as DataHookupContainer).dataHookup as DataGridSessionClient
+            PlatformTestUtil.waitWithEventsDispatching("Native grid request finishes before session disposal", {
+                client.session.isIdle
+            }, 60)
             client.session.detach(client)
             PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
             Disposer.dispose(editor)

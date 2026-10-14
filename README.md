@@ -55,6 +55,18 @@ The `cc62bfd` adapters clear joined calls, query-valued view arguments, DESCRIBE
 aliased dictionary calls, open FROM results and all eight declared-structure completion cases.
 Explicit structures are checked with matching projections; structure-less exports keep the
 34-column regression. The everyday contract still exposes stock's EXISTS-as-function resolve error.
+
+| Sweep position | Before `cc62bfd` | After `cc62bfd` |
+| --- | ---: | ---: |
+| FROM | 84/87 | 87/87 |
+| Aliased FROM | 83/87 | 87/87 |
+| JOIN | 0/87 | 87/87 |
+| DESCRIBE | 82/87 | 87/87 |
+| INSERT SELECT | 22/22 | 22/22 |
+| INSERT PARTITION | 22/22 | 22/22 |
+| INSERT VALUES | 22/22 | 22/22 |
+| INSERT FORMAT | 22/22 | 22/22 |
+| Total | 337/436 | 436/436 |
 Kotlin is optional. Resolved `@BrikkSql` / `Sql.clickhouse` strings inject
 `ClickHouseSQL` through the shared Brikk host layer, overriding the runtime's
 older `BrikkSQL` annotation. Trims and interpolation offsets are preserved;
@@ -79,19 +91,22 @@ Suggested applicability additions are `ordinary-alias`, `alias-hides-slot`,
 
 Plugin Verifier 1.410 reports Compatible on DataGrip 261.24374.56 and
 262.10315.132, and IDEA 262.10968.63, 263.4732.28 and 263.5701.42.
-The shared adapters account for 15 internal API usages in `GenericJdbcIntrospectorGate`,
-574 experimental usages and 6–7 deprecated/removal usages. The connection-interceptor
+The current build reports 30 internal API usages, 604 experimental usages,
+2 scheduled-removal usages and 6–8 deprecated usages. The connection-interceptor
 delegating stubs are documented in the shared support README. No compatibility,
 structure or dependency failures were reported; these API-usage notices remain visible.
 
-The earlier accepted runtime smoke gate passed with brikk-sql `12162f8` and Kotlin helper
-`507fe04`. Valid INSERT FORMAT payloads no longer receive a false local-parser
-error, and Kotlin relation facts link correctly. All regressions remain enabled.
-Kotlin-absent lanes pass 84 tests each on 261/262/263; Kotlin-present lanes pass
-102 each on 262/263. Five-plugin isolation passes 5 tests per lane and real-server
-smoke passes 2 per lane on 261/262/263, with no failures, errors or skips.
-The subsequent strict everyday-SQL contract and table-function sweep expose documented
-shared/native gaps and remain enabled; their outstanding failures are not a green gate.
+The 2026-10-14 round adopts brikk-sql `cc62bfd` with Kotlin helper `507fe04`.
+Kotlin-absent lanes pass 98/99 tests each on 261/262/263; Kotlin-present lanes pass
+116/117 each on 262/263. Every lane has one failure, zero errors and zero skips.
+Three of the four waiting checks now pass. The everyday-SQL test still fails because
+`SqlResolveInspection` reports `Unknown database function 'EXISTS'` in the
+`correlated-exists` and `minimal-exists` cases. No regression is excluded to claim green.
+Five-plugin isolation passes 5/5 per lane using explicit grand-unification worktree ZIPs.
+Real-server tests pass 5/5 per lane on 261/262/263 against ClickHouse 24.12.2.29 with
+JDBC 0.10.0, one task container at a time. Grid teardown waits for the session to
+become idle before detaching, allowing the final EDT callback to complete.
+The complete table-function sweep and open/declared typing checks pass on all three lanes.
 Model-backed column insertion works. Table insertion is not proven by the
 offline fixture, which offers no table under either this dialect or stock ClickHouse.
 Real-server smoke checks live-function insertion, namespace switching, definitions
