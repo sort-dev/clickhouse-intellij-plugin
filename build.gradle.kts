@@ -46,6 +46,23 @@ tasks.register<Copy>("fetchClickHouseTestDriver") {
 }
 
 tasks.withType<Test>().configureEach {
+    val realSqlDirectory = providers.gradleProperty("realSql.dir").orNull
+    if (realSqlDirectory == null) {
+        exclude("**/RealSqlScanTest.class")
+    } else {
+        include("**/RealSqlScanTest.class")
+        systemProperty("realSql.dir", file(realSqlDirectory).absolutePath)
+        val privateDirectory = layout.buildDirectory.dir("realsql").get().asFile
+        systemProperty("realSql.output", privateDirectory.absolutePath)
+        systemProperty("java.io.tmpdir", privateDirectory.resolve("tmp").absolutePath)
+        systemProperty("idea.log.path", privateDirectory.resolve("ide-log").absolutePath)
+        systemProperty("idea.system.path", privateDirectory.resolve("ide-system").absolutePath)
+        systemProperty("idea.config.path", privateDirectory.resolve("ide-config").absolutePath)
+        binaryResultsDirectory.set(privateDirectory.resolve("binary"))
+        reports.junitXml.outputLocation.set(privateDirectory.resolve("xml"))
+        reports.html.outputLocation.set(privateDirectory.resolve("html"))
+        doFirst { privateDirectory.resolve("tmp").mkdirs() }
+    }
     if (providers.environmentVariable("BRIKK_CLICKHOUSE_URL").orNull.isNullOrBlank()) {
         exclude("**/ClickHouseServerVerificationTest.class")
     }

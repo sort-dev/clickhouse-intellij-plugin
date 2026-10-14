@@ -111,3 +111,10 @@ set the URL to `jdbc:clickhouse://127.0.0.1:18123/default` and
 `BRIKK_CLICKHOUSE_CONTAINER=brikk-ch-verify`, then run `ClickHouseServerVerificationTest`.
 The test uses synthetic logins, checks the query log and verifies no output file
 was written. Finish with the script's `down` command. Driver fixtures stay in `build/`.
+
+An opt-in local scan runs with `./gradlew test -Ptest.kotlin=absent -PrealSql.dir=<directory>`.
+It reads SQL without changing the input directory, builds a native model from its DDL,
+and runs real highlighting with and without that model, with PIPE off and on.
+A connection-manager barrier prevents server connections. Completion samples, raw findings,
+logs and temporary IDE state stay under `build/realsql/`; delete that directory after review.
+Only counts belong in reports and only anonymized minimal cases belong in committed tests.
