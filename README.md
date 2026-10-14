@@ -133,3 +133,11 @@ and runs real highlighting with and without that model, with PIPE off and on.
 A connection-manager barrier prevents server connections. Completion samples, raw findings,
 logs and temporary IDE state stay under `build/realsql/`; delete that directory after review.
 Only counts belong in reports and only anonymized minimal cases belong in committed tests.
+The local corpus run framed 99 statements in 10 files, built 8 DDL relations and sampled 118
+completion positions, without opening a connection. Catalog-backed scalar resolution removes
+all 21 remaining unknown-function reports per mode. Remaining reports are unavailable relations
+outside the directory's DDL model, shared/native command parsing, and unbound CTAS storage expressions.
+With the model, reports fall from 66 to 45 per PIPE mode; without it, 121 to 100. The remaining
+model reports comprise 39 unavailable relation/qualifier names, four core parser failures on valid
+command shapes, and two invalid command samples. The no-model pass additionally exposes five CTAS
+storage-expression column reports and unbound names. The no-model/no-red requirement is not yet met.

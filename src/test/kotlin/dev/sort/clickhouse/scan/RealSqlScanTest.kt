@@ -143,6 +143,10 @@ class RealSqlScanTest : ClickHousePlatformTestCase() {
             }
         }
         val native = ModelFactory.BLACK_HOLE.createModel(ClickHouseDbms.CLICKHOUSE_BRIKK)
+        Files.writeString(output.resolve("model.json"), JsonArray(definitions.map { definition -> buildJsonObject {
+            put("kind", definition.kind); put("namespace", definition.namespace); put("name", definition.name)
+            put("columns", JsonArray(definition.columns.map(::JsonPrimitive)))
+        } }).toString())
         val root = native.root as CHouseRoot
         definitions.forEach { definition ->
             val schema = root.schemas.createOrGet(definition.namespace)
@@ -207,6 +211,8 @@ class RealSqlScanTest : ClickHousePlatformTestCase() {
                                         put("file", unit.file); put("statement", unit.statement); put("mode", mode)
                                         put("category", category); put("start", info.startOffset); put("end", info.endOffset)
                                         put("description", description); put("sql", unit.sql)
+                                        put("parents", JsonArray(generateSequence(myFixture.file.findElementAt(info.startOffset)) { it.parent }
+                                            .take(7).map { JsonPrimitive(it.javaClass.simpleName) }.toList()))
                                     }
                                     findings.appendLine(record.toString())
                                 }
@@ -265,12 +271,14 @@ class RealSqlScanTest : ClickHousePlatformTestCase() {
     }
 
     private fun category(description: String): String = when {
+        description.startsWith("ClickHouse (brikk-sql)") -> "core-parse"
         description.contains("function", true) && description.contains("unknown", true) -> "function-resolve"
         description.contains("column", true) && (description.contains("resolve", true) || description.contains("missing", true)) -> "column-resolve"
         description.contains("resolve table", true) || description.contains("resolve schema", true) -> "table-resolve"
+        description.startsWith("Unable to resolve symbol") -> "qualifier-resolve"
         description.contains("FORMAT", true) -> "format-or-settings"
         description.contains("parameter", true) -> "parameter"
-        description.startsWith("ClickHouse (brikk-sql)") -> "core-parse"
+        description.contains("expected", true) || description.contains("unexpected", true) -> "native-parse"
         else -> "psi-or-other"
     }
 }
