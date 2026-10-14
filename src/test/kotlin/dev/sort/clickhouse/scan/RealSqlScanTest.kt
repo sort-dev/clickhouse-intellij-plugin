@@ -22,6 +22,7 @@ import com.intellij.openapi.diagnostic.ControlFlowException
 import com.intellij.openapi.util.Disposer
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.sql.psi.SqlReferenceExpression
+import com.intellij.sql.psi.SqlIdentifier
 import dev.brikk.house.sql.ast.ColumnDef
 import dev.brikk.house.sql.ast.Create
 import dev.brikk.house.sql.ast.Expression
@@ -47,8 +48,12 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 
 /** Opt-in only. No input data, paths, identifiers or literals are embedded in this harness. */
@@ -105,6 +110,21 @@ class RealSqlScanTest : ClickHousePlatformTestCase() {
                 } else if (expression == null && sql.trimStart().startsWith("CREATE", true)) modelParseFailures++
             }
         }
+        Files.newBufferedWriter(output.resolve("statements.jsonl")).use { records ->
+            units.forEach { unit ->
+                val file = myFixture.configureByText("local-scan-names.sql", unit.sql).virtualFile
+                setSqlDialectMapping(project, file, ClickHouseDialect)
+                myFixture.configureFromExistingVirtualFile(file)
+                val identifiers = PsiTreeUtil.findChildrenOfType(myFixture.file, SqlIdentifier::class.java)
+                records.appendLine(buildJsonObject {
+                    put("file", unit.file); put("statement", unit.statement); put("namespace", unit.namespace); put("sql", unit.sql)
+                    put("identifiers", JsonArray(identifiers.map { identifier -> buildJsonObject {
+                        put("start", identifier.textRange.startOffset); put("end", identifier.textRange.endOffset - 1)
+                        put("role", PsiTreeUtil.getParentOfType(identifier, SqlReferenceExpression::class.java)?.referenceElementType?.targetKind?.toString().orEmpty())
+                    } }))
+                }.toString())
+            }
+        }
         // Resolve view/CTAS output through the same shared analyzer, including dependent definitions.
         repeat(definitions.size.coerceAtLeast(1)) {
             val facts = RelationFacts(tables = definitions.associate { definition ->
@@ -146,6 +166,13 @@ class RealSqlScanTest : ClickHousePlatformTestCase() {
                 CatalogScopes.select(listOf(ObjectKind.SCHEMA), listOf(it.name))
             }.reduce(CatalogScopes::widen)
         }
+        val analysisUnits = System.getProperty("realSql.probes")?.let { file ->
+            Json.parseToJsonElement(Files.readString(Path.of(file))).jsonArray.mapIndexed { index, value ->
+                val probe = value.jsonObject
+                UnitSql(index, 0, requireNotNull(probe["sql"]).jsonPrimitive.content,
+                    probe["namespace"]?.jsonPrimitive?.content ?: "scan_default")
+            }
+        } ?: units
         val sources = LocalDataSourceManager.getInstance(project)
         Disposer.register(testRootDisposable) { sources.removeDataSource(source); DbPsiFacade.getInstance(project).clearCaches() }
         val settings = CodeInsightSettings.getInstance()
@@ -163,7 +190,7 @@ class RealSqlScanTest : ClickHousePlatformTestCase() {
                     for (pipes in listOf(false, true)) {
                         pipe.enabled = pipes
                         val mode = "${if (withModel) "model" else "no-model"}-${if (pipes) "pipe-on" else "pipe-off"}"
-                        for (unit in units) {
+                        for (unit in analysisUnits) {
                             var console: RecordingConsole? = null
                             try {
                                 val file = myFixture.configureByText("local-scan.sql", unit.sql).virtualFile
@@ -219,7 +246,7 @@ class RealSqlScanTest : ClickHousePlatformTestCase() {
             settings.AUTOCOMPLETE_ON_CODE_COMPLETION = previousAutocomplete
         }
         val summary = buildJsonObject {
-            put("files", files.size); put("statements", units.size); put("definitions", definitions.size)
+            put("files", files.size); put("statements", analysisUnits.size); put("definitions", definitions.size)
             put("modelParseFailures", modelParseFailures); put("boundaryFailures", boundaryFailures)
             put("completionSamples", samples); put("preventedConnectionAttempts", prevented.get())
             put("counts", buildJsonObject { counts.forEach { (key, value) -> put(key, value) } })

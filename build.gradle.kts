@@ -52,6 +52,7 @@ tasks.withType<Test>().configureEach {
     } else {
         include("**/RealSqlScanTest.class")
         systemProperty("realSql.dir", file(realSqlDirectory).absolutePath)
+        providers.gradleProperty("realSql.probes").orNull?.let { systemProperty("realSql.probes", file(it).absolutePath) }
         val privateDirectory = layout.buildDirectory.dir("realsql").get().asFile
         systemProperty("realSql.output", privateDirectory.absolutePath)
         systemProperty("java.io.tmpdir", privateDirectory.resolve("tmp").absolutePath)
