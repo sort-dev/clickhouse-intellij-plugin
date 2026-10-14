@@ -31,6 +31,7 @@
         <highlightErrorFilter implementation="dev.sort.clickhouse.brikk.ClickHousePlaceholderErrorFilter"/>
         <database.runConsoleAvailable implementation="dev.sort.clickhouse.brikk.ClickHouseRunConsoleVeto"/>
         <sql.resolveExtension implementation="dev.sort.clickhouse.brikk.ClickHouseRelationResolveExtension"/>
+        <sql.resolveExtension implementation="dev.sort.clickhouse.sql.ClickHouseTableFunctionResolveExtension"/>
         <sql.inspectionSuppressorDelegate implementation="dev.sort.clickhouse.brikk.ClickHouseRelationInspectionSuppressor"/>
         <completion.contributor language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.brikk.ClickHouseRelationCompletionContributor" order="first, before clickhouse.metadata"/>
         <gotoDeclarationHandler implementation="dev.sort.clickhouse.brikk.ClickHouseRelationGotoDeclarationHandler"/>
