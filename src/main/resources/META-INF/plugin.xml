@@ -23,6 +23,7 @@
     <extensions defaultExtensionNs="com.intellij">
         <sql.dialect dbms="CLICKHOUSE_BRIKK" implementationClass="dev.sort.clickhouse.sql.ClickHouseDialect" order="first"/>
         <lang.parserDefinition language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.sql.ClickHouseParserDefinition"/>
+        <lang.documentationProvider language="ClickHouseSQL" order="first" implementationClass="dev.brikk.house.sql.intellij.docs.SqlEngineDocumentationProvider"/>
         <lang.syntaxHighlighterFactory language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.sql.ClickHouseSyntaxHighlighterFactory"/>
         <lang.commenter language="ClickHouseSQL" implementationClass="com.intellij.database.sql.common.core.psi.impl.support.SqlNestedCommenter"/>
         <lang.quoteHandler language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.sql.ClickHouseQuoteHandler"/>
