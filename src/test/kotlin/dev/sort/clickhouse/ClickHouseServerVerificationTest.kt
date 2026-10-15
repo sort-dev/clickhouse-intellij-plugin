@@ -123,6 +123,130 @@ import java.io.OutputStreamWriter
 import kotlinx.coroutines.runBlocking
 
 class ClickHouseServerVerificationTest : ClickHousePlatformTestCase() {
+    fun testNativeCancelStopsTheRunningRequestAndConsoleRemainsUsable() {
+        val url = requireNotNull(System.getenv("BRIKK_CLICKHOUSE_URL"))
+        val endpoint = URI.create("http:" + url.removePrefix("jdbc:clickhouse:"))
+        require(endpoint.host == "127.0.0.1" && endpoint.port == 18123 && System.getenv("BRIKK_CLICKHOUSE_CONTAINER") == "brikk-ch-verify")
+        val admin = URI.create("http://${endpoint.rawAuthority}/")
+        fun query(sql: String): String = HttpClient.newHttpClient().use { client ->
+            val response = client.send(HttpRequest.newBuilder(admin).timeout(java.time.Duration.ofSeconds(5))
+                .POST(HttpRequest.BodyPublishers.ofString(sql)).build(), HttpResponse.BodyHandlers.ofString())
+            check(response.statusCode() == 200) { response.body() }
+            response.body().trim()
+        }
+        val failures = mutableListOf<String>()
+        val cancelDialogs = CopyOnWriteArrayList<String>()
+        com.intellij.openapi.ui.TestDialogManager.setTestDialog({ message ->
+            cancelDialogs += message
+            com.intellij.openapi.ui.Messages.CANCEL
+        }, testRootDisposable)
+        for ((dbms, streaming) in listOf(ClickHouseDbms.CLICKHOUSE_BRIKK to false, Dbms.CLICKHOUSE to false,
+            ClickHouseDbms.CLICKHOUSE_BRIKK to true, Dbms.CLICKHOUSE to true)) {
+            val tag = "r2_${UUID.randomUUID().toString().replace("-", "")}"
+            val password = "synthetic-cancellation-password"
+            query("CREATE USER $tag IDENTIFIED WITH plaintext_password BY '$password'")
+            query("GRANT SELECT, KILL QUERY ON *.* TO $tag")
+            val jar = Path.of(System.getenv("BRIKK_CLICKHOUSE_DRIVER") ?: System.getProperty("clickhouse.driver.fixture"))
+            val drivers = DatabaseDriverManager.getInstance()
+            val driver = requireNotNull(drivers.getDriver("clickhouse-sortdev")).copy(tag, false) as DatabaseDriverImpl
+            val language = if (dbms === Dbms.CLICKHOUSE) CHouseDialect.INSTANCE else ClickHouseDialect
+            driver.artifacts = emptyList()
+            driver.setForcedDbms(dbms)
+            driver.setSqlDialect(language.id)
+            driver.additionalClasspathElements = listOf(jar, jar.resolveSibling("slf4j-api-2.0.7.jar"))
+                .flatMap { SimpleClasspathElementFactory.createElements("jar://$it!/") }
+            drivers.updateDriver(driver)
+            val source = LocalDataSource().apply {
+                name = tag
+                databaseDriver = driver
+                this.url = "$url?compress=false&decompress=false&ignore_unknown_config_key=true"
+                username = tag
+                passwordStorage = LocalDataSource.Storage.MEMORY
+                isAutoSynchronize = false
+                isKeepAlive = false
+                model = ModelFactory.BLACK_HOLE.createModel(dbms)
+                workingDir = Files.createDirectories(Path.of("build", "clickhouse-native-working-dir")).toAbsolutePath().toString()
+            }
+            DatabaseCredentials.getInstance().setPassword(source, OneTimeString(password))
+            val sources = LocalDataSourceManager.getInstance(project)
+            sources.addDataSource(source)
+            val file = myFixture.addFileToProject("$tag.sql", "SELECT 1")
+            setSqlDialectMapping(project, file.virtualFile, language)
+            val session = DatabaseSessionManager.openSession(project, source, tag)
+            val console = requireNotNull(com.intellij.database.console.JdbcConsoleProvider.attachConsole(project, session, file.virtualFile))
+            val finished = ConcurrentHashMap.newKeySet<DataRequest>()
+            val errors = CopyOnWriteArrayList<String>()
+            val fetching = java.util.concurrent.atomic.AtomicBoolean()
+            DataBus.addRootAuditor(project, object : DataAuditor {
+                override fun fetchStarted(context: DataRequest.Context, resultSetIndex: Int) { fetching.set(true) }
+                override fun error(context: DataRequest.Context, error: ErrorInfo) { errors += error.toString() }
+                override fun requestFinished(context: DataRequest.Context) { finished += context.request }
+            }, testRootDisposable)
+            var runningId: String? = null
+            fun processId(): String = query("SELECT query_id FROM system.processes WHERE user = '$tag' AND position(query, '$tag') > 0 FORMAT TSVRaw")
+            fun event() = TestActionEvent.createTestEvent(SimpleDataContext.builder()
+                .add(CommonDataKeys.PROJECT, project).add(CommonDataKeys.PSI_FILE, myFixture.file)
+                .add(com.intellij.database.console.client.SessionClientHolder.CLIENT_KEY, console)
+                .add(com.intellij.openapi.actionSystem.PlatformCoreDataKeys.CONTEXT_COMPONENT, myFixture.editor.contentComponent)
+                .add(CommonDataKeys.VIRTUAL_FILE, file.virtualFile).add(CommonDataKeys.EDITOR, myFixture.editor).build())
+            fun execute(sql: String) {
+                WriteCommandAction.runWriteCommandAction(project) { myFixture.editor.document.setText(sql) }
+                PsiDocumentManager.getInstance(project).commitDocument(myFixture.editor.document)
+                FileDocumentManager.getInstance().saveDocument(myFixture.editor.document)
+                myFixture.editor.caretModel.moveToOffset(0)
+                myFixture.editor.selectionModel.removeSelection()
+                requireNotNull(ActionManager.getInstance().getAction("Console.Jdbc.Execute")).actionPerformed(event())
+            }
+            try {
+                myFixture.configureFromExistingVirtualFile(file.virtualFile)
+                val expression = if (streaming) "sleepEachRow(0.1)" else "sum(sleepEachRow(0.1))"
+                execute("SELECT /* $tag */ $expression FROM numbers(600) SETTINGS max_block_size = 1, max_threads = 1, max_execution_time = 25, http_response_buffer_size = 1")
+                PlatformTestUtil.waitWithEventsDispatching("Synthetic cancellation request is running on ClickHouse", {
+                    processId().also { if (it.isNotEmpty()) runningId = it }.isNotEmpty()
+                }, 15)
+                if (streaming) PlatformTestUtil.waitWithEventsDispatching("Native console is fetching the streaming result", { fetching.get() }, 10)
+                assertFalse(session.isIdle)
+                val cancel = requireNotNull(ActionManager.getInstance().getAction("Console.Jdbc.Cancel"))
+                cancel.actionPerformed(event())
+                val started = System.nanoTime()
+                PlatformTestUtil.waitWithEventsDispatching("Cancel ends the native request or reaches the bounded observation deadline", {
+                    processId().isEmpty() || System.nanoTime() - started > TimeUnit.SECONDS.toNanos(6)
+                }, 8)
+                val stopped = processId().isEmpty()
+                println("R2_CANCEL dbms=$dbms driver=${jar.fileName} streaming=$streaming fetching=${fetching.get()} serverStopped=$stopped errors=$errors dialogs=$cancelDialogs")
+                if (!stopped) {
+                    if (dbms === ClickHouseDbms.CLICKHOUSE_BRIKK) {
+                        failures += "$dbms streaming=$streaming: native Cancel left its server request running; errors=$errors"
+                    }
+                } else {
+                    PlatformTestUtil.waitWithEventsDispatching("Cancelled console becomes idle", { session.isIdle }, 10)
+                    finished.clear()
+                    errors.clear()
+                    execute("SELECT 42 AS cancellation_probe /* ${tag}_after */")
+                    PlatformTestUtil.waitWithEventsDispatching("The same console executes its next request", { finished.isNotEmpty() && session.isIdle }, 10)
+                    assertEmpty(errors)
+                    query("SYSTEM FLUSH LOGS")
+                    assertEquals("1", query("SELECT count() FROM system.query_log WHERE user = '$tag' AND type = 'QueryFinish' AND position(query, '${tag}_after') > 0"))
+                    assertEquals("1", query("SELECT count() FROM system.query_log WHERE query_id = '${requireNotNull(runningId)}' AND type = 'ExceptionWhileProcessing' AND exception_code = 394"))
+                }
+            } finally {
+                // Only this synthetic request is eligible for cleanup if the native cancellation failed.
+                runningId?.let { id ->
+                    require(Regex("[A-Za-z0-9_-]+").matches(id))
+                    query("KILL QUERY WHERE query_id = '$id' SYNC")
+                }
+                PlatformTestUtil.waitWithEventsDispatching("Cancellation fixture releases its console", { session.isIdle }, 15)
+                DatabaseSessionViewService.getInstance().destroyView(console)
+                Disposer.dispose(console)
+                Disposer.dispose(session)
+                sources.removeDataSource(source)
+                drivers.removeDriver(driver)
+                query("DROP USER IF EXISTS $tag")
+            }
+        }
+        assertEmpty(failures)
+    }
+
     fun testNativeDataSourceSyncAndNamespaceSelection() = nativePaths(false)
     fun testReferenceAutoIntrospection() = nativePaths(true)
     fun testStockNativePaths() = nativePaths(false, Dbms.CLICKHOUSE)
