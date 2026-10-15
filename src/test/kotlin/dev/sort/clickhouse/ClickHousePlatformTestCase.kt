@@ -9,6 +9,7 @@ abstract class ClickHousePlatformTestCase : BasePlatformTestCase() {
     override fun setUp() {
         super.setUp()
         backgroundErrors = BackgroundErrors(testRootDisposable)
+        ClickHouseDependencyProvenance.verify()
     }
 
     override fun tearDown() {

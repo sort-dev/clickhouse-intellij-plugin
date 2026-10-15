@@ -95,14 +95,13 @@ Suggested applicability additions are `ordinary-alias`, `alias-hides-slot`,
 
 Plugin Verifier 1.410 reports Compatible on DataGrip 261.24374.56 and
 262.10315.132, and IDEA 262.10968.63, 263.4732.28 and 263.5701.42.
-The current build reports 30 internal API usages, 610 experimental usages,
-2 scheduled-removal usages and 6–8 deprecated usages. The connection-interceptor
-delegating stubs are documented in the shared support README. No compatibility,
-structure or dependency failures were reported; these API-usage notices remain visible.
+API-usage notices remain visible in the verifier reports under `build/reports/pluginVerifier`.
+The connection-interceptor delegating stubs are documented in the shared support README.
+No compatibility, structure or dependency failures were reported.
 
-The 2026-10-14 cleared-model round refreshes brikk-sql through `c785084` with Kotlin helper `507fe04`.
-Kotlin-absent lanes pass 105/105 tests each on 261/262/263; Kotlin-present lanes pass
-123/123 each on 262/263, with zero failures, errors or skips. All four waiting checks pass.
+The delivery-audit round refreshes brikk-sql through `00f661e` with Kotlin helper `507fe04`.
+Kotlin-absent lanes pass 108/108 tests each on 261/262/263; Kotlin-present lanes pass
+126/126 each on 262/263, with zero failures, errors or skips. All four waiting checks pass.
 Keyword coverage includes EXISTS/NOT EXISTS, IN/NOT IN and ANY/ALL subqueries, CASE, CAST,
 INTERVAL, EXTRACT, TRIM(BOTH), POSITION(IN) and SUBSTRING(FROM). Negative controls assert
 real unknown-function ranges, including inside predicate queries, and preserve quoted/qualified calls.
@@ -114,6 +113,29 @@ one task container at a time, including both formerly failing empty-root regress
 Grid teardown waits for the session to become idle before detaching, allowing the final
 EDT callback to complete.
 The complete table-function sweep and open/declared typing checks pass on all three lanes.
+
+#### Delivery provenance and completion confidence
+
+`dependency-provenance.properties` records the full shared source SHA and the SHA-256 of each
+shared runtime/test jar. Update and commit it when adopting new snapshot bytes, so the existing
+commit-derived version scheme gives the changed payload a new plugin version. The build checks
+resolved dependencies and ZIP entries against that file; each test worker checks the jar backing
+the support class it actually loads and writes `DEPENDENCY_RUNTIME` hash/path evidence to its XML.
+Isolation checks the ClickHouse plugin's own classloader too. Refresh adoption gates run with
+`--refresh-dependencies --rerun-tasks --no-build-cache`.
+
+The earlier `00f661e` delivery report selected an old clean-name ZIP while Gradle had built a
+current `.dirty.zip`. Resolution was current, but the reported ZIP was stale. Delivery must check
+the exact new clean-head filename, packaged descriptor version and embedded hashes together,
+not select an older matching archive. Do not replace a delivered version with different bytes.
+
+The `completion.confidence` registration uses `implementationClass`, not `implementation`.
+`CompletionConfidenceEP` inherits that attribute from `LanguageExtensionPoint` on 261/262/263.
+Before the fix, platform EP enumeration and the actual auto-popup gate both reproduced
+`PluginException: implementation class is not specified`. Runtime tests now instantiate the
+registered confidence, invoke `CommittingDocuments.shouldSkipAutoPopup`, and instantiate the
+other keyed language registrations without plugin errors. No other keyed language registration
+had the wrong implementation attribute.
 
 #### Clearing all introspection data
 

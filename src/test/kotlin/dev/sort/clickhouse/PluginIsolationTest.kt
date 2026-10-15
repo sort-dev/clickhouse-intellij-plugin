@@ -17,6 +17,11 @@ import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.testFramework.LoggedErrorProcessor
 import com.intellij.testFramework.TestApplicationManager
 import java.util.concurrent.CopyOnWriteArrayList
+import java.nio.file.Files
+import java.nio.file.Path
+import java.security.MessageDigest
+import java.util.Properties
+import com.intellij.util.PathUtil
 
 // The isolation worker excludes Brikk jars from its test classpath.
 class PluginIsolationTest : BasePlatformTestCase() {
@@ -78,6 +83,15 @@ class PluginIsolationTest : BasePlatformTestCase() {
             val loader = requireNotNull(descriptor.pluginClassLoader)
             val support = loader.loadClass("dev.brikk.house.sql.intellij.dialect.SqlDialectRegistry")
             assertSame(name, loader, support.classLoader)
+            if (name == "clickhouse") {
+                val provenance = Properties().apply {
+                    requireNotNull(loader.getResourceAsStream("META-INF/dependency-provenance.properties")).use { load(it) }
+                }
+                val path = Path.of(PathUtil.getJarPathForClass(support))
+                val hash = MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(path)).toHexString()
+                assertEquals(provenance.getProperty("brikk-sql-intellij-support-0.2.0-SNAPSHOT.jar"), hash)
+                println("DEPENDENCY_RUNTIME isolation source=${provenance.getProperty("brikk.sql.source")} sha256=$hash jar=$path")
+            }
             assertSame(name, loader, loader.loadClass("dev.brikk.house.sql.BrikkSql").classLoader)
             support
         }
