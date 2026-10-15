@@ -50,6 +50,7 @@
         <notificationGroup id="ClickHouse catalog" displayType="BALLOON"/>
         <annotator language="ClickHouseSQL" implementationClass="dev.sort.clickhouse.pipe.ClickHouseStageAnnotator"/>
         <dynamicActionConfigurationCustomizer implementation="dev.sort.clickhouse.pipe.ClickHouseExecuteConfiguration"/>
+        <dynamicActionConfigurationCustomizer implementation="dev.sort.clickhouse.ClickHouseStreamingCancelConfiguration"/>
         <actionPromoter implementation="dev.sort.clickhouse.pipe.ClickHouseExecutePromoter" order="first"/>
         <projectConfigurable id="dev.sort.clickhouse.pipe" displayName="ClickHouse PIPE" parentId="tools" nonDefaultProject="true" instance="dev.sort.clickhouse.pipe.ClickHousePipeConfigurable"/>
         <notificationGroup id="ClickHouse PIPE" displayType="BALLOON"/>
