@@ -162,7 +162,7 @@ Model-backed column insertion works. Table insertion is not proven by the
 offline fixture, which offers no table under either this dialect or stock ClickHouse.
 Real-server smoke checks live-function insertion, namespace switching, definitions
 and parse-only export validation without running the submitted SQL.
-Enable **ClickHouse PIPE support** under Settings > Tools > ClickHouse PIPE.
+Enable **ClickHouse PIPE support** under Settings > Tools > Database > ClickHouse PIPE.
 PIPE defaults off; `-Dclickhouse.pipes=false` vetoes it. SELECT-first and FROM-first
 pipelines use shared Execute, preview, run-to-stage, completion and coloring.
 PIPE execution still has no engine verdict; its editor syntax is checked locally.
