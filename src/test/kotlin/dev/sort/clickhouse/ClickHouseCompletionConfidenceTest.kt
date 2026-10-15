@@ -11,19 +11,10 @@ import dev.sort.clickhouse.sql.ClickHouseCompletionConfidence
 import dev.sort.clickhouse.sql.ClickHouseDialect
 
 class ClickHouseCompletionConfidenceTest : ClickHousePlatformTestCase() {
-    fun testRegisteredConfidenceInstantiatesThroughThePlatformLanguageExtension() {
+    fun testRegisteredClickHouseExtensionsAndAutopopupGate() {
         assertNotNull(PluginManagerCore.getPlugin(PluginId.getId("dev.sort.clickhouse-intellij-plugin")))
         val registered = CompletionConfidenceEP.forLanguage(ClickHouseDialect)
         assertEquals(1, registered.count { it is ClickHouseCompletionConfidence })
-    }
-
-    fun testActualAutopopupGateLoadsTheRegisteredConfidence() {
-        val file = myFixture.configureByText("confidence.sql", "SELECT to<caret>")
-        setSqlDialectMapping(project, file.virtualFile, ClickHouseDialect)
-        assertFalse(CompletionPhase.CommittingDocuments.shouldSkipAutoPopup(myFixture.editor, myFixture.file))
-    }
-
-    fun testOtherKeyedLanguageRegistrationsInstantiateFromTheirActualBeans() {
         for (name in listOf("lang.parserDefinition", "lang.syntaxHighlighterFactory", "lang.commenter", "lang.quoteHandler",
             "externalAnnotator", "completion.contributor", "completion.confidence", "annotator")) {
             val beans = ExtensionPointName.create<LanguageExtensionPoint<*>>("com.intellij.$name").extensionList
@@ -34,5 +25,8 @@ class ClickHouseCompletionConfidenceTest : ClickHousePlatformTestCase() {
                 assertEquals(bean.implementationClass, bean.instance.javaClass.name)
             }
         }
+        val file = myFixture.configureByText("confidence.sql", "SELECT to<caret>")
+        setSqlDialectMapping(project, file.virtualFile, ClickHouseDialect)
+        assertFalse(CompletionPhase.CommittingDocuments.shouldSkipAutoPopup(myFixture.editor, myFixture.file))
     }
 }

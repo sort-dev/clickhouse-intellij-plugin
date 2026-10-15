@@ -100,8 +100,10 @@ The connection-interceptor delegating stubs are documented in the shared support
 No compatibility, structure or dependency failures were reported.
 
 The delivery-audit round refreshes brikk-sql through `00f661e` with Kotlin helper `507fe04`.
-Kotlin-absent lanes pass 108/108 tests each on 261/262/263; Kotlin-present lanes pass
-126/126 each on 262/263, with zero failures, errors or skips. All four waiting checks pass.
+Before consolidating the registration regression, Kotlin-absent lanes passed 108/108 tests each
+on 261/262/263 and Kotlin-present lanes passed 126/126 each on 262/263, with zero failures,
+errors or skips. The owner-directed final focused gate passes 15 tests on 263: one registration
+regression plus the two completion test classes. All four waiting checks passed in the earlier audit.
 Keyword coverage includes EXISTS/NOT EXISTS, IN/NOT IN and ANY/ALL subqueries, CASE, CAST,
 INTERVAL, EXTRACT, TRIM(BOTH), POSITION(IN) and SUBSTRING(FROM). Negative controls assert
 real unknown-function ranges, including inside predicate queries, and preserve quoted/qualified calls.
