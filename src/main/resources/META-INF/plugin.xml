@@ -80,7 +80,7 @@
                 text="Refresh ClickHouse Catalog" description="Read function names from the connected ClickHouse system catalog">
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
         </action>
-        <group id="ClickHousePipe.EditorMenu" text="ClickHouse PIPE" popup="true">
+        <group id="ClickHousePipe.EditorMenu" class="com.intellij.ide.actions.NonEmptyActionGroup" text="ClickHouse PIPE" popup="true">
             <add-to-group group-id="EditorPopupMenu" anchor="first"/>
             <action id="ClickHousePipe.Preview" class="dev.sort.clickhouse.pipe.ClickHousePreviewAction" text="Preview Generated SQL"/>
             <action id="ClickHousePipe.RunToStage" class="dev.sort.clickhouse.pipe.ClickHouseRunToStageAction" text="Run Stages up to Caret"/>
