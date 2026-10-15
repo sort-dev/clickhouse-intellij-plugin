@@ -125,7 +125,10 @@ Isolation checks the ClickHouse plugin's own classloader too. Refresh adoption g
 `--refresh-dependencies --rerun-tasks --no-build-cache`.
 
 The earlier `00f661e` delivery report selected an old clean-name ZIP while Gradle had built a
-current `.dirty.zip`. Resolution was current, but the reported ZIP was stale. Delivery must check
+current `.dirty.zip`. Forced builds exposed the source of that dirty marker: an unignored,
+transient `build-logic/.kotlin/sessions/*.salive` compiler file. Generated `.kotlin/` state is now
+ignored; real source changes still mark the version dirty. Resolution was current, but the reported
+ZIP was stale. Delivery must check
 the exact new clean-head filename, packaged descriptor version and embedded hashes together,
 not select an older matching archive. Do not replace a delivered version with different bytes.
 
