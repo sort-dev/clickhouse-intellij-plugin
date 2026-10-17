@@ -56,6 +56,13 @@ single ZIP's filename, main JAR, plugin ID and descriptor version. These command
 publish or tag anything; publication remains the owner's separate action. Without
 `-Prelease=true`, builds retain the commit-derived development suffix.
 
+An owner-authorized push to a `release-*` branch runs `.github/workflows/release.yml`, which
+calls the shared release workflow pinned to `6e77690f0bea7aee30faf3808de3e27b4f7e44fa` with
+the default JDK 21. It builds the caller's release ZIP, validates it, and creates the matching
+GitHub tag/release with the ZIP asset. Pushes to other branches do not trigger it. Wait for the
+owner's release go before pushing a release branch. The workflow does not run `publishPlugin`;
+JetBrains uploads remain owner-only.
+
 Conventions are vendored at `d8bedadb0eaaa3f2cc3e069c696cbcfbd5d8663e` using
 `../intellij-sql-plugin-gradle-conventions/sync-into.sh "$PWD" d8bedad`.
 The plugin compiles on 261 and targets IDE builds 261 through 263.
