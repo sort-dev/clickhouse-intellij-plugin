@@ -34,11 +34,42 @@ Core ranges bound raw FORMAT data. Non-Values data ends at a blank line, a line
 holding only `;`, or EOF; a semicolon inside data is data. CSV quoting follows
 settings written in that INSERT, not invisible session settings.
 
-Build with `./gradlew buildPlugin check test262 test263`. Compiles on 261;
-runtime lanes cover 261/262/263. Core/metadata 0.20.0-SNAPSHOT and
-support/test-support 0.2.0-SNAPSHOT resolve exclusively from Maven Local.
-Build conventions are vendored with
-`../intellij-sql-plugin-gradle-conventions/sync-into.sh "$PWD"`.
+## Release preparation: 0.1.1
+
+The release base is **0.1.1**, which upgrades the delivered `0.1.0-dev.*` versions.
+All internal dependencies use formal releases: core/metadata/verify family **0.20.0**,
+SQL support/test-support **0.2.0**, and the Kotlin IntelliJ helper **0.3.0**.
+The owner must publish those releases to Maven Central first. They are not available yet;
+there is no snapshot fallback, local alias or older-API substitution. The formal release
+has not been built or tested. Earlier verification results below describe snapshot dogfood builds.
+
+After publication, the owner can build and validate manually from a clean release workspace
+whose `build/distributions` contains no older ZIPs:
+
+```sh
+./gradlew buildPlugin -Prelease=true --no-daemon --console=plain
+python3 build-logic/tools/verify-release-zip.py build/distributions dev.sort.clickhouse-intellij-plugin 0.1.1
+```
+
+The explicit release build depends on the shared `verifyRelease` guard. The CLI checks the
+single ZIP's filename, main JAR, plugin ID and descriptor version. These commands do not
+publish or tag anything; publication remains the owner's separate action. Without
+`-Prelease=true`, builds retain the commit-derived development suffix.
+
+Conventions are vendored at `d8bedadb0eaaa3f2cc3e069c696cbcfbd5d8663e` using
+`../intellij-sql-plugin-gradle-conventions/sync-into.sh "$PWD" d8bedad`.
+The plugin compiles on 261 and targets IDE builds 261 through 263.
+
+### 0.1.1 change notes
+
+- Adopt released internal coordinates without mutable snapshot hash pins.
+- Preserve verified JDBC 0.10.0 streaming cancellation and same-console reuse for the plugin's
+  datasource only. JDBC 0.9.8 `SESSION_IS_LOCKED` remains unresolved; driver policy is unchanged.
+- Hide the PIPE popup when no child applies, including unrelated Kotlin/text contexts.
+- Place PIPE settings under **Settings > Tools > Database > ClickHouse PIPE**.
+- Keep property key/value completion off; ordinary SQL completion and documentation remain available.
+
+## SQL editing
 
 Completion uses ClickHouse 26.5.1.1 metadata. Functions retain catalog case;
 keywords insert UPPER. Missing function signatures are not guessed.
@@ -116,15 +147,13 @@ Grid teardown waits for the session to become idle before detaching, allowing th
 EDT callback to complete.
 The complete table-function sweep and open/declared typing checks pass on all three lanes.
 
-#### Delivery provenance and completion confidence
+#### Dependency identity and completion confidence
 
-`dependency-provenance.properties` records the full shared source SHA and the SHA-256 of each
-shared runtime/test jar. Update and commit it when adopting new snapshot bytes, so the existing
-commit-derived version scheme gives the changed payload a new plugin version. The build checks
-resolved dependencies and ZIP entries against that file; each test worker checks the jar backing
-the support class it actually loads and writes `DEPENDENCY_RUNTIME` hash/path evidence to its XML.
-Isolation checks the ClickHouse plugin's own classloader too. Refresh adoption gates run with
-`--refresh-dependencies --rerun-tasks --no-build-cache`.
+The mutable-snapshot `dependency-provenance.properties`, packaged hash manifest and snapshot-only
+runtime probes have been retired. Immutable released coordinates in the canonical catalog and the
+shared release guard replace those dogfood checks; no stable hashes are invented. Isolation still
+asserts that each plugin's own classloader owns its support/core classes and that plugins do not
+share those classes. Historical snapshot hashes and logs are not active release expectations.
 
 The earlier `00f661e` delivery report selected an old clean-name ZIP while Gradle had built a
 current `.dirty.zip`. Forced builds exposed the source of that dirty marker: an unignored,

@@ -1,14 +1,9 @@
-import java.security.MessageDigest
-import java.util.Properties
-import java.util.zip.ZipFile
-import org.jetbrains.intellij.platform.gradle.tasks.BuildPluginTask
-
 plugins {
     id("dev.sort.sql-dialect-plugin")
 }
 
 group = "dev.sort.clickhouse"
-version = "0.1.0"
+version = "0.1.1"
 
 sqlDialectPlugin {
     legalFiles = listOf("LICENSE", "THIRD_PARTY_NOTICES.md")
@@ -50,44 +45,7 @@ tasks.register<Copy>("fetchClickHouseTestDriver") {
     into(layout.buildDirectory.dir("clickhouse-driver"))
 }
 
-val dependencyProvenance = layout.projectDirectory.file("dependency-provenance.properties")
-val provenance = providers.fileContents(dependencyProvenance).asText.map { text ->
-    val properties = Properties().apply { load(text.reader()) }
-    properties.stringPropertyNames().filter { it.endsWith(".jar") }.associateWith(properties::getProperty)
-}
-fun sha256(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256").digest(bytes).toHexString()
-
-val verifyDependencyProvenance = tasks.register("verifyDependencyProvenance") {
-    group = "verification"
-    description = "Rejects shared snapshot bytes not recorded in the commit's dependency provenance."
-    val jars = configurations.named("testRuntimeClasspath")
-    inputs.file(dependencyProvenance)
-    inputs.files(jars)
-    doLast {
-        val actual = jars.get().files.filter { it.name.startsWith("brikk-") && it.extension == "jar" }
-            .associate { it.name to sha256(it.readBytes()) }
-        check(actual == provenance.get()) { "Shared dependency payload differs from dependency-provenance.properties: $actual" }
-    }
-}
-tasks.named<ProcessResources>("processResources") {
-    from(dependencyProvenance) { into("META-INF") }
-}
-tasks.named<BuildPluginTask>("buildPlugin") {
-    dependsOn(verifyDependencyProvenance)
-    inputs.file(dependencyProvenance)
-    doLast {
-        ZipFile(archiveFile.get().asFile).use { zip ->
-            val embedded = zip.entries().asSequence().filter { it.name.substringAfterLast('/') in provenance.get() }
-                .associate { entry -> entry.name.substringAfterLast('/') to sha256(zip.getInputStream(entry).use { it.readBytes() }) }
-            val expected = provenance.get().filterKeys { !it.startsWith("brikk-sql-intellij-test-support-") }
-            check(embedded == expected) { "ZIP payload does not match the recorded shared dependencies: $embedded" }
-        }
-    }
-}
-
 tasks.withType<Test>().configureEach {
-    dependsOn(verifyDependencyProvenance)
-    inputs.file(dependencyProvenance)
     val realSqlDirectory = providers.gradleProperty("realSql.dir").orNull
     if (realSqlDirectory == null) {
         exclude("**/RealSqlScanTest.class")

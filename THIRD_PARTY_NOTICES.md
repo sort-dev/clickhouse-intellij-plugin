@@ -2,16 +2,16 @@
 
 This plugin embeds the following Apache License 2.0 libraries:
 
-- `dev.brikk.house:brikk-sql-jvm:0.20.0-SNAPSHOT` and
-  `brikk-sql-metadata-jvm:0.20.0-SNAPSHOT`, Copyright Brikk / Sortdev SRL.
+- `dev.brikk.house:brikk-sql-jvm:0.20.0` and
+  `brikk-sql-metadata-jvm:0.20.0`, Copyright Brikk / Sortdev SRL.
   https://github.com/brikk-house/brikk-sql
-- `brikk-sql-intellij-support:0.2.0-SNAPSHOT`, Copyright Brikk / Sortdev SRL.
+- `brikk-sql-intellij-support:0.2.0`, Copyright Brikk / Sortdev SRL.
   https://github.com/brikk-house/brikk-sql
-- `brikk-sql-verify-api:0.20.0-SNAPSHOT`, Copyright Brikk / Sortdev SRL.
+- `brikk-sql-verify-api:0.20.0`, Copyright Brikk / Sortdev SRL.
   https://github.com/brikk-house/brikk-sql
-- `brikk-sql-verify-clickhouse:0.20.0-SNAPSHOT`, Copyright Brikk / Sortdev SRL.
+- `brikk-sql-verify-clickhouse:0.20.0`, Copyright Brikk / Sortdev SRL.
   https://github.com/brikk-house/brikk-sql
-- `brikk-engine-kotlin-intellij-support:0.3.0-SNAPSHOT`, Copyright Brikk / Sortdev SRL,
+- `brikk-engine-kotlin-intellij-support:0.3.0`, Copyright Brikk / Sortdev SRL,
   Apache License 2.0, not the Business Source License of its parent repository.
   https://github.com/brikk-house/brikk-house
 
