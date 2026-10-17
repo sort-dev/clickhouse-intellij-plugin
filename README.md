@@ -56,15 +56,15 @@ single ZIP's filename, main JAR, plugin ID and descriptor version. These command
 publish or tag anything; publication remains the owner's separate action. Without
 `-Prelease=true`, builds retain the commit-derived development suffix.
 
-An owner-authorized push to a `release-*` branch runs `.github/workflows/release.yml`, which
-calls the shared release workflow pinned to `6e77690f0bea7aee30faf3808de3e27b4f7e44fa` with
-the default JDK 21. It builds the caller's release ZIP, validates it, and creates the matching
-GitHub tag/release with the ZIP asset. Pushes to other branches do not trigger it. Wait for the
-owner's release go before pushing a release branch. The workflow does not run `publishPlugin`;
-JetBrains uploads remain owner-only.
+Commit release preparation to `main`, then create an owner-authorized `release/<version>` branch
+from that commit. The shared workflow rejects commits absent from main, builds on JDK 21, and runs
+API verification on IntelliJ 262 and 263 before ZIP validation and GitHub release. Internal usages
+without exact owner-confirmed call-site approvals block release; full reports remain available.
+Compatible alone is not Marketplace approval. JetBrains uploads remain owner-only.
+Version 0.1.1 was withdrawn; its tag and local ZIPs are audit evidence, not release-ready artifacts.
 
-Conventions are vendored at `d8bedadb0eaaa3f2cc3e069c696cbcfbd5d8663e` using
-`../intellij-sql-plugin-gradle-conventions/sync-into.sh "$PWD" d8bedad`.
+Conventions provenance is recorded in `build-logic/VENDORED-FROM`; use the canonical
+`../intellij-sql-plugin-gradle-conventions/sync-into.sh` to update it.
 The plugin compiles on 261 and targets IDE builds 261 through 263.
 
 ### 0.1.1 change notes

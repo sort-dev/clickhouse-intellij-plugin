@@ -1,6 +1,7 @@
 # Agent guide
 
-- Work on `grand-unification`; never push `main`, force-push or publish.
+- Current code belongs on `main`. Releases use `release/<version>` branches created from main.
+  Publication requires explicit owner authorization and review of internal API findings; never force-push.
 - Build from shared Brikk SQL adapters, not sibling plugin copies. Library gaps
   belong upstream; do not edit other repositories or add local substitutes.
 - Use idiomatic Kotlin 2.4.x. Java-compatibility annotations only when IntelliJ requires them.
