@@ -3,12 +3,43 @@
     <name>SQL Dialect for ClickHouse</name>
     <vendor url="https://sort.dev" email="jayson@sort.dev">Sortdev SRL</vendor>
     <description><![CDATA[
-        <p>ClickHouse SQL editing built on the Brikk SQL shared libraries.</p>
-        <p>ClickHouse statement boundaries, metadata completion and optional PIPE authoring.
-        Enable ClickHouse PIPE support under Settings &gt; Tools &gt; Database &gt; ClickHouse PIPE to
-        preview generated SQL, execute pipelines and run stages up to the caret.</p>
-        <p>Local PSI and Brikk SQL checks run first. While your data source is connected,
-        its ClickHouse parser adds a parse-only check without executing or reading data.</p>
+        <p>A fuller <b>ClickHouse SQL dialect</b> for DataGrip and IntelliJ IDEA Ultimate. Your SQL is
+        checked by your own ClickHouse server's parser, and completion follows the functions your
+        server actually has. Compatible with the 2026.1 through 2026.3 IDE lines.</p>
+
+        <ul>
+            <li><b>Checked by your ClickHouse server.</b> While your data source is connected, the
+                server's own parser checks each statement. It only parses: nothing runs and no data
+                is read. When the server accepts a statement, local false errors go away. Local
+                checks still apply when the server is unreachable</li>
+            <li><b>More ClickHouse syntax than the built-in dialect.</b> Table functions in
+                <code>FROM</code>, <code>JOIN</code>, <code>DESCRIBE</code> and <code>INSERT</code>,
+                <code>EXISTS</code> and <code>ALL</code>/<code>ANY</code> predicates,
+                <code>INSERT INTO FUNCTION</code> exports, and raw <code>FORMAT</code> data</li>
+            <li><b>Completion from your server.</b> Function names are read from the connected
+                server's system catalog and merged with bundled ClickHouse metadata, so completion
+                and quick documentation match the version you run. <i>Refresh ClickHouse Catalog</i>
+                (editor right-click) reloads them on demand</li>
+            <li><b>Table function arguments</b> complete and resolve without falling back to
+                unrelated table names</li>
+            <li><b>Automatic targeted introspection.</b> Reference a schema that hasn't been
+                introspected yet and the plugin introspects just that schema in the background</li>
+            <li><b>ClickHouse PIPE (optional).</b> Write <code>FROM t |&gt; WHERE ... |&gt; SELECT ...</code>
+                and run it as ClickHouse SQL, with stage completion, generated-SQL preview and
+                run-to-stage. Enable it under <b>Settings &rarr; Tools &rarr; Database &rarr; ClickHouse PIPE</b>.
+                Disabled by default; no SQL Transpiler plugin installation is required</li>
+            <li>Ready-to-use <b>ClickHouse (sort.dev)</b> data source on ClickHouse's official JDBC
+                driver (default HTTP port 8123), which selects the dialect for its consoles
+                automatically. The database tree, DDL and object sources come from the IDE's
+                built-in ClickHouse support</li>
+        </ul>
+
+        <p><i>This is an independent, community plugin developed by Sortdev SRL. It is not affiliated
+        with, endorsed by, or sponsored by ClickHouse, Inc. "ClickHouse" is a registered trademark of
+        ClickHouse, Inc., used here only to identify the database this plugin supports.</i></p>
+
+        <p>Source, issues and documentation:
+        <a href="https://github.com/sort-dev/clickhouse-intellij-plugin">github.com/sort-dev/clickhouse-intellij-plugin</a></p>
     ]]></description>
     <change-notes><![CDATA[
         <h3>0.2.0</h3>
