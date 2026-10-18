@@ -11,6 +11,12 @@
         its ClickHouse parser adds a parse-only check without executing or reading data.</p>
     ]]></description>
     <change-notes><![CDATA[
+        <h3>0.1.2</h3>
+        <ul>
+            <li>Update to SQL IntelliJ support 0.2.1 without the unused generic JDBC adapter.</li>
+            <li>Reduce factory delegation to the stock factory's concrete methods.</li>
+            <li>Preserve native connection handling, server-object forwarding and editing behavior.</li>
+        </ul>
         <h3>0.1.1</h3>
         <ul>
             <li>Adopt released Brikk SQL 0.20.0, SQL IDE support 0.2.0 and Kotlin IntelliJ helper 0.3.0.</li>

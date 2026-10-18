@@ -34,22 +34,21 @@ Core ranges bound raw FORMAT data. Non-Values data ends at a blank line, a line
 holding only `;`, or EOF; a semicolon inside data is data. CSV quoting follows
 settings written in that INSERT, not invisible session settings.
 
-## Release preparation: 0.1.1
+## Release preparation: 0.1.2
 
-The release base is **0.1.1**, which upgrades the delivered `0.1.0-dev.*` versions.
+The release base is **0.1.2**, which upgrades the earlier `0.1.1` and development builds.
 All internal dependencies use formal releases: core/metadata/verify family **0.20.0**,
 SQL support/test-support **0.2.1**, and the Kotlin IntelliJ helper **0.3.0**.
-Core0.20.0 and helper0.3.0 are already public. Support/test-kit0.2.1 are local API-cleanup candidates
-pending Central publication; default builds need that publication. Local validation uses an explicit
-candidate repository override, with no snapshot fallback or artifact relabeling. ClickHouse does not
-bundle the optional generic JDBC adapter. Earlier dogfood results remain historical.
+Core 0.20.0, helper 0.3.0 and support/test-kit 0.2.1 are published on Maven Central.
+Normal builds need no local candidate repository or snapshot fallback. ClickHouse does not bundle
+the optional generic JDBC adapter. Earlier dogfood results remain historical.
 
 After publication, the owner can build and validate manually from a clean release workspace
 whose `build/distributions` contains no older ZIPs:
 
 ```sh
 ./gradlew buildPlugin -Prelease=true --no-daemon --console=plain
-python3 build-logic/tools/verify-release-zip.py build/distributions dev.sort.clickhouse-intellij-plugin 0.1.1
+python3 build-logic/tools/verify-release-zip.py build/distributions dev.sort.clickhouse-intellij-plugin 0.1.2
 ```
 
 The explicit release build depends on the shared `verifyRelease` guard. The CLI checks the
@@ -62,7 +61,10 @@ from that commit. The shared workflow rejects commits absent from main, builds o
 API verification on IntelliJ 262 and 263 before ZIP validation and GitHub release. Internal usages
 without exact owner-confirmed call-site approvals block release; full reports remain available.
 Compatible alone is not Marketplace approval. JetBrains uploads remain owner-only.
-Version 0.1.1 was withdrawn; its tag and local ZIPs are audit evidence, not release-ready artifacts.
+GitHub release 0.1.1 was withdrawn; its tag and local ZIPs are historical audit evidence.
+
+Manual dispatch on `release/<version>` runs the same guarded workflow. Use
+`gh workflow run release.yml --ref release/<version>` if `[skip ci]` skipped the push trigger.
 
 Conventions provenance is recorded in `build-logic/VENDORED-FROM`; use the canonical
 `../intellij-sql-plugin-gradle-conventions/sync-into.sh` to update it.
