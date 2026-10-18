@@ -11,7 +11,7 @@
         its ClickHouse parser adds a parse-only check without executing or reading data.</p>
     ]]></description>
     <change-notes><![CDATA[
-        <h3>0.1.2</h3>
+        <h3>0.2.0</h3>
         <ul>
             <li>Update to SQL IntelliJ support 0.2.1 without the unused generic JDBC adapter.</li>
             <li>Reduce factory delegation to the stock factory's concrete methods.</li>
