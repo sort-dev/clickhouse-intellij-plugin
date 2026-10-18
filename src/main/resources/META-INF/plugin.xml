@@ -42,6 +42,11 @@
         <a href="https://github.com/sort-dev/clickhouse-intellij-plugin">github.com/sort-dev/clickhouse-intellij-plugin</a></p>
     ]]></description>
     <change-notes><![CDATA[
+        <h3>0.2.1</h3>
+        <ul>
+            <li>Engine errors for this dialect's blocks in SQL Transpiler <code>.bsql</code> scratches, and its completion and catalog features resolve against the block's own <code>using=</code> connection (SQL IntelliJ support 0.2.2).</li>
+            <li>A user-facing README and plugin description with a non-affiliation notice.</li>
+        </ul>
         <h3>0.2.0</h3>
         <ul>
             <li>Update to SQL IntelliJ support 0.2.1 without the unused generic JDBC adapter.</li>
