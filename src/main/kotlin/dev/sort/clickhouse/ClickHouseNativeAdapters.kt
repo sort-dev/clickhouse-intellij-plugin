@@ -6,14 +6,25 @@ import com.intellij.database.dialects.clickhouse.introspector.CHouseIntrospector
 import com.intellij.database.introspection.DBIntrospectionContext
 import com.intellij.database.introspection.DBIntrospector
 import com.intellij.database.model.ModelFactory
+import com.intellij.database.model.ObjectKind
+import com.intellij.database.model.basic.BasicElement
+import com.intellij.database.util.Version
 import com.intellij.openapi.Disposable
 
 /** The platform's final native introspector validates CLICKHOUSE, not extension-fallback aliases. */
-class ClickHouseIntrospectorFactory : DBIntrospector.Factory by CHouseIntrospector.Factory() {
+@kotlin.jvm.JvmDefaultWithoutCompatibility
+class ClickHouseIntrospectorFactory : DBIntrospector.Factory {
+    private val native = CHouseIntrospector.Factory()
+
     override fun createIntrospector(context: DBIntrospectionContext, dbms: Dbms, modelFactory: ModelFactory): DBIntrospector {
         require(dbms === ClickHouseDbms.CLICKHOUSE_BRIKK)
-        return ClickHouseIntrospector(CHouseIntrospector.Factory().createIntrospector(context, Dbms.CLICKHOUSE, modelFactory))
+        return ClickHouseIntrospector(native.createIntrospector(context, Dbms.CLICKHOUSE, modelFactory))
     }
+
+    // The stock factory inherits the other capability defaults; forwarding them adds no behavior.
+    override fun isSupported(version: Version): Boolean = native.isSupported(version)
+    override fun getVersion(kind: ObjectKind): Int = native.getVersion(kind)
+    override fun isOutdatedCheckSupported(element: BasicElement?): Boolean = native.isOutdatedCheckSupported(element)
 }
 
 private class ClickHouseIntrospector(private val stock: DBIntrospector) : DBIntrospector by stock {

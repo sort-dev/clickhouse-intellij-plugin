@@ -38,10 +38,11 @@ settings written in that INSERT, not invisible session settings.
 
 The release base is **0.1.1**, which upgrades the delivered `0.1.0-dev.*` versions.
 All internal dependencies use formal releases: core/metadata/verify family **0.20.0**,
-SQL support/test-support **0.2.0**, and the Kotlin IntelliJ helper **0.3.0**.
-The owner must publish those releases to Maven Central first. They are not available yet;
-there is no snapshot fallback, local alias or older-API substitution. The formal release
-has not been built or tested. Earlier verification results below describe snapshot dogfood builds.
+SQL support/test-support **0.2.1**, and the Kotlin IntelliJ helper **0.3.0**.
+Core0.20.0 and helper0.3.0 are already public. Support/test-kit0.2.1 are local API-cleanup candidates
+pending Central publication; default builds need that publication. Local validation uses an explicit
+candidate repository override, with no snapshot fallback or artifact relabeling. ClickHouse does not
+bundle the optional generic JDBC adapter. Earlier dogfood results remain historical.
 
 After publication, the owner can build and validate manually from a clean release workspace
 whose `build/distributions` contains no older ZIPs:
