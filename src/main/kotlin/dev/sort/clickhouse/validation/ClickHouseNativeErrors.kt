@@ -33,7 +33,8 @@ object ClickHouseNativeErrorProfile : NativeErrorProfile {
     override val localParser = true
     override val reportsPsiErrors = false
     override val hostSql get() = ClickHouseHostSql
-    override val injectionHosts get() = setOfNotNull(Language.findLanguageByID("kotlin"))
+    // Kotlin strings, and blocks of SQL Transpiler's polyglot .bsql files.
+    override val injectionHosts get() = setOfNotNull(Language.findLanguageByID("kotlin"), Language.findLanguageByID("BrikkSQL"))
 
     private val verification = DataSourceVerification(
         DialectDataSourceResolver(ClickHouseDbms.CLICKHOUSE_BRIKK),

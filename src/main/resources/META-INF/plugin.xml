@@ -28,6 +28,7 @@
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.database</depends>
     <depends optional="true" config-file="clickhouse-kotlin.xml">org.jetbrains.kotlin</depends>
+    <depends optional="true" config-file="clickhouse-bsql.xml">dev.sort.sql-transpiler-intellij-plugin</depends>
     <extensionPoints>
         <extensionPoint qualifiedName="dev.sort.clickhouse.relationFacts" interface="dev.brikk.house.sql.intellij.relation.ExternalRelationFacts" dynamic="true"/>
         <extensionPoint qualifiedName="dev.sort.clickhouse.inspectionRule" interface="dev.sort.clickhouse.brikk.ClickHouseInspectionRule" dynamic="true"/>
