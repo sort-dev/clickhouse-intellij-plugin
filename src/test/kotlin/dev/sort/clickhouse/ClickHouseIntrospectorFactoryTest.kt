@@ -40,9 +40,10 @@ class ClickHouseIntrospectorFactoryTest : BasePlatformTestCase() {
         val stock = CHouseIntrospector.Factory().createIntrospector(context, ClickHouseDbms.CLICKHOUSE_BRIKK, ModelFactory.BLACK_HOLE)
         assertSame(Dbms.CLICKHOUSE, (stock as BaseIntrospector<*>).dbms)
         assertThrows(DbmsMismatchException::class.java) { stock.attachToDB(aliasConnection()) }
-        // The production factory keeps the wrapper instead of returning that incompatible stock object.
+        // The production factory keeps the adapter instead of returning that incompatible stock object.
         val adapted = ClickHouseIntrospectorFactory().createIntrospector(context, ClickHouseDbms.CLICKHOUSE_BRIKK, ModelFactory.BLACK_HOLE)
-        assertEquals("dev.sort.clickhouse.ClickHouseIntrospector", adapted.javaClass.name)
+        assertTrue(Proxy.isProxyClass(adapted.javaClass))
+        assertNotSame(stock, adapted)
     }
 
     fun testWrapperPreservesConnectionIdentityAndForwardsServerObjects() {
@@ -62,15 +63,49 @@ class ClickHouseIntrospectorFactoryTest : BasePlatformTestCase() {
                 else -> error("Unexpected introspector call: $method")
             }
         } as DBIntrospector
-        // Construct our private wrapper with a recording delegate; no reflection into platform internals.
-        val constructor = Class.forName("dev.sort.clickhouse.ClickHouseIntrospector").getDeclaredConstructor(DBIntrospector::class.java)
-        constructor.isAccessible = true
-        val wrapper = constructor.newInstance(recording) as DBIntrospector
+        val wrapper = ClickHouseIntrospector.of(recording)
         wrapper.attachToDB(original)
-        wrapper.introspectServerObjects()
+        @Suppress("DEPRECATION") wrapper.introspectServerObjects()
         assertSame(ClickHouseDbms.CLICKHOUSE_BRIKK, original.dbms)
         assertEquals(1, attachments)
         assertEquals(1, serverObjects)
+    }
+
+    /**
+     * Every method of the running IDE's interface is implemented, including ones the compile SDK lacks
+     * (263's DBIntrospector.getDiagnosticSink, which made the old `by`-delegating class binary-incompatible).
+     */
+    fun testTheAdapterImplementsEveryMethodOfTheRunningInterface() {
+        var forwarded = 0
+        val stock = Proxy.newProxyInstance(DBIntrospector::class.java.classLoader, arrayOf(DBIntrospector::class.java)) { _, _, _ ->
+            forwarded++
+            null
+        } as DBIntrospector
+        val adapter = ClickHouseIntrospector.of(stock)
+        val methods = DBIntrospector::class.java.methods.filter { java.lang.reflect.Modifier.isAbstract(it.modifiers) && it.name != "attachToDB" }
+        for (method in methods) {
+            val args = method.parameterTypes.map { type -> if (type.isPrimitive) java.lang.reflect.Array.get(java.lang.reflect.Array.newInstance(type, 1), 0) else null }
+            method.invoke(adapter, *args.toTypedArray())
+        }
+        assertEquals(methods.size, forwarded)
+    }
+
+    fun testTheConnectionViewKeepsTheConnectionsLifecycle() {
+        var disposed = 0
+        val connection = Proxy.newProxyInstance(DatabaseConnectionCore::class.java.classLoader,
+            arrayOf(DatabaseConnectionCore::class.java, com.intellij.openapi.Disposable::class.java)) { _, method, _ ->
+            when (method.name) {
+                "getDbms" -> ClickHouseDbms.CLICKHOUSE_BRIKK
+                "dispose" -> { disposed++; null }
+                else -> error("Unexpected connection access: $method")
+            }
+        } as DatabaseConnectionCore
+        val view = ClickHouseIntrospector.clickHouseView(connection)
+        assertSame(Dbms.CLICKHOUSE, view.dbms)
+        (view as com.intellij.openapi.Disposable).dispose()
+        assertEquals(1, disposed)
+        // A pre-263 connection that is not Disposable is never disposed through the view.
+        (ClickHouseIntrospector.clickHouseView(aliasConnection()) as com.intellij.openapi.Disposable).dispose()
     }
 
     private fun aliasConnection(): DatabaseConnectionCore = Proxy.newProxyInstance(

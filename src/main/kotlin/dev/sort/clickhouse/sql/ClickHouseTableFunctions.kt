@@ -1,5 +1,6 @@
 package dev.sort.clickhouse.sql
 
+import com.intellij.psi.PsiReference
 import com.intellij.psi.ResolveState
 import com.intellij.codeInsight.completion.CompletionContributor
 import com.intellij.codeInsight.completion.CompletionParameters
@@ -37,7 +38,8 @@ class ClickHouseTableFunctionResolveExtension : SqlResolveExtension {
     private val symbols = ConcurrentHashMap<String, BuiltinFunction>()
 
     override fun process(reference: SqlReference, processor: SqlScopeProcessor): Boolean {
-        val name = reference.element as? SqlReferenceExpression ?: return true
+        // PsiReference.getElement, not the experimental PsiSymbolReference.getElement: the same element.
+        val name = (reference as PsiReference).element as? SqlReferenceExpression ?: return true
         val call = name.parent as? SqlFunctionCallExpression
         if (name.qualifierExpression != null) return true
         val file = name.containingFile

@@ -42,6 +42,12 @@
         <a href="https://github.com/sort-dev/clickhouse-intellij-plugin">github.com/sort-dev/clickhouse-intellij-plugin</a></p>
     ]]></description>
     <change-notes><![CDATA[
+        <h3>0.2.2</h3>
+        <ul>
+            <li>Compatible with IntelliJ 2026.3: native ClickHouse introspection runs through runtime proxies, so the adapter implements every method of the running IDE's introspector (263.7031 added methods the previous adapter lacked).</li>
+            <li>Stable reference APIs in function and table-function resolution.</li>
+            <li>SQL IntelliJ support 0.2.3: no deprecated, scheduled-for-removal or experimental platform calls that have stable equivalents; no behavior changes.</li>
+        </ul>
         <h3>0.2.1</h3>
         <ul>
             <li>Engine errors for this dialect's blocks in SQL Transpiler <code>.bsql</code> scratches, and its completion and catalog features resolve against the block's own <code>using=</code> connection (SQL IntelliJ support 0.2.2).</li>

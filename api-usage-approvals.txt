@@ -1,5 +1,6 @@
 # Exact owner-approved internal API call sites.
-# Reviewed and approved by the owner for 0.2.0 (workflow run 39163504655).
+# Reviewed and approved by the owner for 0.2.0 (workflow run 39163504655); 0.2.2 drops the two
+# introspectServerObjects call sites, which the proxy-based adapter no longer has.
 # The ClickHouse introspector deliberately wraps the stock DBIntrospector.Factory
 # through a narrow adapter: extension fallback alone fails its DBMS identity check.
 Internal interface com.intellij.database.introspection.DBIntrospector.Factory is referenced in dev.sort.clickhouse.ClickHouseIntrospectorFactory.
@@ -7,5 +8,3 @@ Internal method com.intellij.database.introspection.DBIntrospector.Factory.creat
 Internal method com.intellij.database.introspection.DBIntrospector.Factory.getVersion(com.intellij.database.model.ObjectKind arg0) : int is overridden in class dev.sort.clickhouse.ClickHouseIntrospectorFactory.
 Internal method com.intellij.database.introspection.DBIntrospector.Factory.isOutdatedCheckSupported(com.intellij.database.model.basic.BasicElement arg0) : boolean is overridden in class dev.sort.clickhouse.ClickHouseIntrospectorFactory.
 Internal method com.intellij.database.introspection.DBIntrospector.Factory.isSupported(com.intellij.database.util.Version version) : boolean is overridden in class dev.sort.clickhouse.ClickHouseIntrospectorFactory.
-Internal method com.intellij.database.introspection.DBIntrospector.introspectServerObjects() : void is invoked in dev.sort.clickhouse.ClickHouseIntrospector.introspectServerObjects() : void.
-Internal method com.intellij.database.introspection.DBIntrospector.introspectServerObjects() : void is overridden in class dev.sort.clickhouse.ClickHouseIntrospector.
