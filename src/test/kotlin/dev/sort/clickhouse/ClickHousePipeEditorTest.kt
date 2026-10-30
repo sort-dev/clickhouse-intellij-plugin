@@ -36,7 +36,8 @@ class ClickHousePipeEditorTest : ClickHousePipeTestCase() {
         for (sql in listOf("FROM events |> <caret>", "SELECT * FROM (FROM events |> <caret>) AS p")) {
             val items = complete(sql)
             assertSameElements(items, pipeRunnableStageKeywords("clickhouse"))
-            assertDoesntContain(items, "NATURAL JOIN", "PIVOT")
+            assertContainsElements(items, "NATURAL JOIN")
+            assertDoesntContain(items, "PIVOT")
         }
     }
 
@@ -46,7 +47,8 @@ class ClickHousePipeEditorTest : ClickHousePipeTestCase() {
         DumbModeTestUtils.runInDumbModeSynchronously(project) {
             val items = completeCurrent()
             assertSameElements(items, pipeRunnableStageKeywords("clickhouse"))
-            assertDoesntContain(items, "NATURAL JOIN", "PIVOT")
+            assertContainsElements(items, "NATURAL JOIN")
+            assertDoesntContain(items, "PIVOT")
         }
     }
 
@@ -73,7 +75,7 @@ class ClickHousePipeEditorTest : ClickHousePipeTestCase() {
     }
 
     fun testOnlySupportedStageHeadsAreColoredAtTheirOffsets() {
-        val sql = "FROM events |> NATURAL JOIN other |> WHERE id > 0 |> ORDER BY id"
+        val sql = "FROM events |> CALL f(1) |> NATURAL JOIN other |> WHERE id > 0 |> ORDER BY id"
         open(sql)
         val annotator = LanguageAnnotators.INSTANCE.allForLanguage(myFixture.file.language)
             .filterIsInstance<ClickHouseStageAnnotator>().single()
@@ -81,7 +83,7 @@ class ClickHousePipeEditorTest : ClickHousePipeTestCase() {
         holder.runAnnotatorWithContext(myFixture.file, annotator)
         holder.assertAllAnnotationsCreated()
         val ranges = holder.map { TextRange(it.startOffset, it.endOffset) }
-        assertSameElements(ranges, listOf("WHERE", "ORDER BY").map { word ->
+        assertSameElements(ranges, listOf("NATURAL", "JOIN", "WHERE", "ORDER BY").map { word ->
             TextRange(sql.indexOf(word), sql.indexOf(word) + word.length)
         })
     }

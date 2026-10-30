@@ -51,6 +51,13 @@ class ClickHouseErrorHighlightTest : ClickHousePlatformTestCase() {
         }
     }
 
+    fun testCurrentClickHouseSyntaxHasNoFalseErrors() {
+        for (case in boundaryCorpus.filter { it.name.startsWith("current ") }) {
+            configure(case.sql)
+            assertEmpty(case.name, myFixture.doHighlighting(HighlightSeverity.ERROR))
+        }
+    }
+
     fun testGenuineErrorsAfterAMaskedBindFallbackRemainVisible() {
         val insert = "INSERT INTO FUNCTION null('id UInt64') PARTITION BY toString(:partition) SELECT 1 AS id;"
         configure("$insert\nSELECT FROM WHERE 1 +;")

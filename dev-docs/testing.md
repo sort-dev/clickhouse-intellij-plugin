@@ -1,5 +1,29 @@
 # Test fixtures
 
+## Brikk snapshot candidates
+
+This checkout overrides the vendored catalog with SQL `0.22.0-SNAPSHOT` and
+IntelliJ support `0.2.5-SNAPSHOT`. The shared conventions resolve Brikk snapshots
+from Maven Local. Install the candidates there before building, and compare their
+JAR hashes with the published candidates at
+`https://central.sonatype.com/repository/maven-snapshots/`.
+
+The explicit strict dependency versions prevent stable transitive SQL dependencies
+from replacing the snapshots during conflict resolution. Keep those constraints
+aligned with the catalog overrides in `settings.gradle.kts`.
+
+```sh
+./gradlew test test262 test263 verifyDistribution verifyBundledSnapshotHashes --refresh-dependencies
+./gradlew test test262 test263 -Ptest.kotlin=absent
+./gradlew verifyPlugin
+```
+
+`verifyBundledSnapshotHashes` compares the actual plugin ZIP with Maven Local.
+Snapshot builds are for testing only; the release guard rejects them. Replace the
+candidate versions with the verified stable release and update the third-party
+notices before releasing. Remove the overrides only after the shared catalog pins
+that release. Do not modify the vendored build conventions or their catalog.
+
 ## Live ClickHouse server verification
 
 `ClickHouseServerVerificationTest` runs only when `BRIKK_CLICKHOUSE_URL` is set. It

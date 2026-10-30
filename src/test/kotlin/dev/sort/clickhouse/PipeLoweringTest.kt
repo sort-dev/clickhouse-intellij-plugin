@@ -22,7 +22,7 @@ class PipeLoweringTest : TestCase() {
     }
 
     fun testUnsupportedStagesRefuseOrBlockExecution() {
-        for (stage in listOf("CALL", "RENAME", "NATURAL JOIN", "STRAIGHT_JOIN", "PIVOT", "UNPIVOT")) {
+        for (stage in listOf("CALL", "RENAME", "STRAIGHT_JOIN", "PIVOT", "UNPIVOT")) {
             val tail = if (stage == "STRAIGHT_JOIN") "events AS other ON events.id = other.id" else stageTail(stage)
             when (val lowered = lowerForExecution("FROM events |> $stage $tail", "clickhouse")) {
                 is PipeLowering.Refused -> Unit

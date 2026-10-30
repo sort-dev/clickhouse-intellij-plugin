@@ -21,11 +21,23 @@ sqlDialectPlugin {
 }
 
 dependencies {
-    implementation(libs.brikk.sql.jvm)
-    implementation(libs.brikk.sql.metadata.jvm)
-    implementation(libs.brikk.sql.intellij.support)
+    // Keep the candidates aligned even when transitive dependencies request stable SQL.
+    implementation(libs.brikk.sql.jvm) {
+        version { strictly(libs.versions.brikk.sql.core.get()) }
+    }
+    implementation(libs.brikk.sql.metadata.jvm) {
+        version { strictly(libs.versions.brikk.sql.core.get()) }
+    }
+    implementation(libs.brikk.sql.intellij.support) {
+        version { strictly(libs.versions.brikk.sql.intellij.support.get()) }
+    }
     implementation(libs.brikk.engine.kotlin.intellij.support)
     implementation("dev.brikk.house:brikk-sql-verify-clickhouse:${libs.versions.brikk.sql.core.get()}")
+    constraints {
+        implementation("dev.brikk.house:brikk-sql-verify-api") {
+            version { strictly(libs.versions.brikk.sql.core.get()) }
+        }
+    }
     testImplementation(libs.brikk.sql.intellij.test.support)
 }
 

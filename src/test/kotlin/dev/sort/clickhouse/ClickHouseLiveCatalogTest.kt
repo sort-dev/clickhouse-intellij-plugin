@@ -14,6 +14,18 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 class ClickHouseLiveCatalogTest : ClickHousePlatformTestCase() {
+    fun testBundledCatalogDefaultsToCurrentStableAndRetainsHistoricalSelection() {
+        val metadata = ClickHouseLiveCatalogProfile.metadata
+        assertEquals("26.10.2.103", metadata.default.engineVersion)
+        assertSame(metadata.default, metadata.forServerVersion(null).snapshot)
+        assertEquals("26.8.34.13", metadata.forServerVersion("26.8.34.13").snapshot.engineVersion)
+        val historical = metadata.forServerVersion("26.5.1.1").snapshot
+        assertNotNull(historical.functions["windowID"])
+        assertNull(metadata.default.functions["windowID"])
+        assertNotNull(metadata.default.type("QBit"))
+        assertTrue(metadata.default.grammarForms.orEmpty().any { it.name == "TRY_CAST" })
+    }
+
     fun testLiveThenDiskThenBundledSelectionIsIdentityScoped() {
         val parent = Files.createDirectories(Path.of(System.getProperty("clickhouse.catalog.fixture")))
         val directory = Files.createTempDirectory(parent, "selection-")

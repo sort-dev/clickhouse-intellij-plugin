@@ -19,7 +19,7 @@ import dev.sort.clickhouse.pipe.ClickHousePipeDialect
 class ClickHousePipeRefusalTest : ClickHousePipeTestCase() {
     fun testUnsupportedClickHouseStagesNeverSubmitOrDelegate() {
         for (stage in listOf(
-            "CALL f(1)", "RENAME id AS renamed", "NATURAL JOIN other",
+            "CALL f(1)", "RENAME id AS renamed",
             "STRAIGHT_JOIN other ON events.id = other.id",
             "PIVOT (sum(id) FOR value IN (1, 2))", "UNPIVOT (v FOR k IN (id, value))",
         )) {

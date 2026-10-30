@@ -24,6 +24,27 @@ import dev.sort.clickhouse.pipe.ClickHousePipeDialect
 import dev.sort.clickhouse.sql.ClickHouseDialect
 
 class ClickHousePipeParametersTest : ClickHousePipeTestCase() {
+    fun testNaturalJoinSubmitsLoweredSqlToTheConsole() {
+        val sql = "FROM events |> NATURAL JOIN other"
+        val editor = open(sql)
+        val file = requireNotNull(PsiDocumentManager.getInstance(project).getPsiFile(editor.document))
+        RecordingConsole(project, file.virtualFile, "clickhouse-sortdev").use { recording ->
+            val context = SimpleDataContext.builder()
+                .add(CommonDataKeys.PROJECT, project).add(CommonDataKeys.EDITOR, editor)
+                .add(CommonDataKeys.PSI_FILE, file).add(CommonDataKeys.VIRTUAL_FILE, file.virtualFile)
+                .add(SessionClientHolder.CLIENT_KEY, recording.console).build()
+            val event = AnActionEvent.createEvent(context, Presentation(), "ClickHouseNaturalJoinTest", ActionUiKind.NONE, null)
+            val previous = object : AnAction() {
+                override fun actionPerformed(e: AnActionEvent) = fail("Owned NATURAL JOIN PIPE must not delegate")
+            }
+            editor.selectionModel.setSelection(0, sql.length)
+            CooperativeExecuteAction(1, previous, PipeExecuteInterceptor(ClickHousePipeDialect)).actionPerformed(event)
+            val query = (recording.requests.single() as DataRequest.QueryRequest).query
+            assertEquals("SELECT * FROM events NATURAL JOIN other", query.replace(Regex("\\s+"), " ").trim())
+            assertEquals(sql, editor.document.text)
+        }
+    }
+
     fun testIdeBindIsPromptedAndTypedParametersPassThroughUntouched() {
         val sql = "FROM {table:Identifier} |> WHERE id > {floor:UInt64} AND id < :limit |> SELECT id"
         val editor = open(sql)

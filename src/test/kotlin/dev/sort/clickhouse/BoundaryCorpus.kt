@@ -75,4 +75,15 @@ internal val boundaryCorpus = listOf(
     BoundaryCase("json sql-looking data", listOf("INSERT INTO events FORMAT JSONEachRow\n{\"id\":1};\nSELECT 2;")),
     BoundaryCase("json terminated before select", listOf("INSERT INTO events FORMAT JSONEachRow\n{\"id\":1}\n;", "SELECT 2;")),
     BoundaryCase("json blank line before select", listOf("INSERT INTO events FORMAT JSONEachRow\n{\"id\":1}", "SELECT 2;"), separator = "\n\n"),
+    BoundaryCase("current stream and boundary limit", listOf(
+        "SELECT * FROM events STREAM SETTINGS enable_streaming_queries = 1;",
+        "SELECT number FROM numbers(10) ORDER BY number LIMIT 2 AFTER 1 UNTIL 5;",
+        "SELECT 2;",
+    )),
+    BoundaryCase("current scalar and join syntax", listOf(
+        "SELECT TRY_CAST('256' AS UInt8), sumTuple(tuple(1, 2));",
+        "SELECT * FROM events NATURAL JOIN other;",
+        "SELECT toDateTime('2026-10-01') AT LOCAL;",
+        "SELECT * FROM remote('example.invalid', 'db', 'events', SETTINGS max_threads = 1);",
+    )),
 )

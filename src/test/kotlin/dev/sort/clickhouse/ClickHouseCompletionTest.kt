@@ -52,6 +52,20 @@ class ClickHouseCompletionTest : ClickHousePlatformTestCase() {
         assertEquals("SELECT sum(<caret>)", insertFunction("SELECT su<caret>", "sum"))
     }
 
+    fun testNativeTryCastSpecialFormInsertion() {
+        assertEquals("SELECT TRY_CAST<caret>", insertFunction("SELECT try_ca<caret>", "TRY_CAST"))
+        assertEquals("SELECT TRY_CAST(<caret>)", insertFunction("SELECT try_ca<caret>", "TRY_CAST", '('))
+    }
+
+    fun testNativeTryCastCompletionReusesExistingParentheses() {
+        val items = complete("SELECT try_ca<caret>('256' AS UInt8)")
+        val item = items.singleOrNull { it.lookupString.equals("TRY_CAST", ignoreCase = true) }
+        assertNotNull("TRY_CAST must be offered before existing AS syntax; candidates: ${items.map { it.lookupString }}", item)
+        myFixture.lookup.currentItem = requireNotNull(item)
+        myFixture.finishLookup(Lookup.NORMAL_SELECT_CHAR)
+        assertEquals("SELECT TRY_CAST(<caret>'256' AS UInt8)", result())
+    }
+
     fun testKeywordInsertionIsUppercase() {
         val item = complete("SELECT 1; sel<caret>").single { it.lookupString.equals("SELECT", true) }
         myFixture.lookup.currentItem = item
