@@ -9,13 +9,15 @@
 
         <ul>
             <li><b>Checked by your ClickHouse server.</b> While your data source is connected, the
-                server's own parser checks each statement. It only parses: nothing runs and no data
-                is read. When the server accepts a statement, local false errors go away. Local
-                checks still apply when the server is unreachable</li>
+                server's own parser checks each statement. Your statement is parsed, not executed,
+                and checking it does not read your tables. When the server accepts a statement,
+                local false errors go away. Local checks still apply when the server is unreachable</li>
             <li><b>More ClickHouse syntax than the built-in dialect.</b> Table functions in
                 <code>FROM</code>, <code>JOIN</code>, <code>DESCRIBE</code> and <code>INSERT</code>,
                 <code>EXISTS</code> and <code>ALL</code>/<code>ANY</code> predicates,
-                <code>INSERT INTO FUNCTION</code> exports, and raw <code>FORMAT</code> data</li>
+                <code>INSERT INTO FUNCTION</code> exports, raw <code>FORMAT</code> data, and newer
+                forms such as <code>STREAM</code>, boundary <code>LIMIT</code>,
+                <code>NATURAL JOIN</code>, <code>AT LOCAL</code> and native <code>TRY_CAST</code></li>
             <li><b>Completion from your server.</b> Function names are read from the connected
                 server's system catalog and merged with bundled ClickHouse metadata, so completion
                 and quick documentation match the version you run. <i>Refresh ClickHouse Catalog</i>
@@ -34,6 +36,13 @@
                 built-in ClickHouse support</li>
         </ul>
 
+        <p>Bundled function catalogs cover ClickHouse 26.10 stable, 26.8 LTS and historical 26.5;
+        connected-server completion follows the server's function inventory. Syntax coverage is
+        broad, not complete: some authorization and <code>EXPLAIN</code> forms remain partial,
+        and newer features still need the appropriate server version and settings. DDL parsing
+        is editor assistance, not a guarantee of successful execution. Server parser acceptance
+        does not prove names, types, permissions or query results are correct.</p>
+
         <p><i>This is an independent, community plugin developed by Sortdev SRL. It is not affiliated
         with, endorsed by, or sponsored by ClickHouse, Inc. "ClickHouse" is a registered trademark of
         ClickHouse, Inc., used here only to identify the database this plugin supports.</i></p>
@@ -42,6 +51,25 @@
         <a href="https://github.com/sort-dev/clickhouse-intellij-plugin">github.com/sort-dev/clickhouse-intellij-plugin</a></p>
     ]]></description>
     <change-notes><![CDATA[
+        <h3>Unreleased</h3>
+        <ul>
+            <li>Refresh bundled ClickHouse knowledge for 26.10.2.103 stable and 26.8.34.13 LTS,
+                retaining historical 26.5 catalogs and version-aware function selection.</li>
+            <li>Expand SQL parsing for <code>STREAM</code>, boundary <code>LIMIT ... AFTER ... UNTIL</code>,
+                <code>NATURAL JOIN</code>, <code>AT LOCAL</code>, compound intervals,
+                <code>remote</code>/<code>cluster</code> function <code>SETTINGS</code>,
+                Tuple aggregate combinators, and
+                <code>QBit</code>/<code>MultiPoint</code> type syntax.</li>
+            <li>Broaden parsing of refreshable materialized views with <code>APPEND INCREMENTAL</code>, projections and newer
+                administration/<code>EXPLAIN</code> forms. Some of these grammars remain partial;
+                DDL validation is parse-only.</li>
+            <li>Add <code>NATURAL JOIN</code> to built-in PIPE stage completion and execution through
+                generated ClickHouse SQL. PIPE remains optional and needs no SQL Transpiler plugin.</li>
+            <li>Fix <code>TRY_CAST</code> completion before existing cast arguments, preserving
+                parentheses, <code>AS</code> syntax and caret placement.</li>
+            <li>Use released Brikk SQL 0.23.0 and IntelliJ support 0.4.0 while retaining
+                compatibility with the 2026.1 through 2026.3 IDE lines.</li>
+        </ul>
         <h3>0.2.2</h3>
         <ul>
             <li>Compatible with IntelliJ 2026.3: native ClickHouse introspection runs through runtime proxies, so the adapter implements every method of the running IDE's introspector (263.7031 added methods the previous adapter lacked).</li>

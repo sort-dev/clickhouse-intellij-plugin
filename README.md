@@ -19,15 +19,63 @@ still come from the IDE's built-in ClickHouse support.
 ## Features
 
 - **Checked by your ClickHouse server.** While connected, the server's own parser checks your SQL.
-  It only parses: nothing runs and no data is read. When the server accepts a statement, local
-  false errors go away.
+  Your statement is parsed, not executed, and checking it does not read your tables. When the
+  server accepts a statement, local false errors go away.
 - **More ClickHouse syntax** than the built-in dialect: table functions in `FROM`, `JOIN`,
   `DESCRIBE` and `INSERT`, `EXISTS` and `ALL`/`ANY` predicates, `INSERT INTO FUNCTION` exports, and
-  raw `FORMAT` data.
+  raw `FORMAT` data. See [SQL coverage](#clickhouse-sql-coverage) for supported forms and limits.
 - **Completion from your server.** Function names come from the connected server's system catalog,
   merged with the plugin's bundled function list, so completion and docs match your version.
 - **ClickHouse PIPE (optional).** Write pipe-syntax queries and run them on ClickHouse. See
   [ClickHouse PIPE](#clickhouse-pipe).
+
+## ClickHouse SQL coverage
+
+The coverage below includes the upcoming release's additions. See the
+[published release notes](https://github.com/sort-dev/clickhouse-intellij-plugin/releases)
+for the version you are installing.
+
+### Versions and catalogs
+
+Bundled function catalogs cover **26.10.2.103 stable**, **26.8.34.13 LTS** and
+**26.5.1.1**. An unknown server version uses the 26.10 catalog; a known version selects
+the nearest available bundled catalog, supplemented by the connected server's function inventory.
+Historical functions remain available in older catalogs rather than being suggested for
+current servers.
+
+These are catalog baselines, not a requirement to run one of those exact builds. Syntax
+availability and required settings still depend on your ClickHouse server.
+
+### Syntax covered
+
+- Queries with `SELECT`, `WITH`, subqueries, joins, aggregation, window functions and lambdas.
+- ClickHouse query clauses such as `PREWHERE`, `FINAL`, `SAMPLE`, `ALL`/`ANY`/`ASOF` joins,
+  `ARRAY JOIN`, `LIMIT BY` and parametric aggregates.
+- Table functions in query and export positions, including `INSERT INTO FUNCTION` with
+  `PARTITION BY`, typed `{name:Type}` parameters, and raw `INSERT ... FORMAT` payloads.
+  Statement selection keeps inline data and embedded semicolons with their owning statement.
+- Newer forms including `STREAM`, boundary `LIMIT ... AFTER ... UNTIL`, `NATURAL JOIN`,
+  `AT LOCAL`, compound intervals, `remote`/`cluster` function `SETTINGS`, native `TRY_CAST`, Tuple
+  aggregate combinators, and `QBit`/`MultiPoint` type syntax.
+- DDL and administration forms including refreshable materialized views, projections,
+  `SYSTEM` and `EXPLAIN`, with the limits below.
+
+### Limits
+
+Coverage is broad, not complete ClickHouse grammar or semantic validation. Recognizing a
+statement does not mean every part supports completion, navigation, refactoring or type
+inference. Some authorization, administration and `EXPLAIN` forms remain partial, and some
+higher-order and aggregate expressions still have unknown inferred types.
+
+DDL validation is parse-only. You can still execute DDL normally through the console, but editor
+acceptance is not a migration plan or a guarantee of success. Server parser acceptance alone
+does not prove table or column existence, permissions, argument types or query results.
+Schema-aware assistance also depends on the schemas the IDE has introspected.
+
+Features such as `STREAM` and experimental `LATERAL` still require a server version and settings
+that permit them. No extra settings/property key-value completion is added beyond the IDE's
+own suggestions. When the server cannot be reached, local checks remain active, but no server
+acceptance is implied.
 
 ## Requirements
 
@@ -62,6 +110,11 @@ What you get:
 - Right-click → **ClickHouse PIPE → Preview Generated SQL** shows the SQL before you run it.
 - Right-click → **ClickHouse PIPE → Run Stages up to Caret** runs the pipeline only up to the stage
   at your cursor.
+- Stage completion includes supported ClickHouse joins, including `NATURAL JOIN`.
+
+PIPE is built into this plugin and does not require SQL Transpiler. It is editor syntax converted
+to ordinary SQL, not a server-side ClickHouse extension. Unsupported stages and translations
+reported as lossy are refused rather than sent to the server.
 
 ## Notes
 
