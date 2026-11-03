@@ -51,7 +51,7 @@
         <a href="https://github.com/sort-dev/clickhouse-intellij-plugin">github.com/sort-dev/clickhouse-intellij-plugin</a></p>
     ]]></description>
     <change-notes><![CDATA[
-        <h3>Unreleased</h3>
+        <h3>0.3.0</h3>
         <ul>
             <li>Refresh bundled ClickHouse knowledge for 26.10.2.103 stable and 26.8.34.13 LTS,
                 retaining historical 26.5 catalogs and version-aware function selection.</li>

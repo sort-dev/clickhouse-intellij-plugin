@@ -31,7 +31,7 @@ still come from the IDE's built-in ClickHouse support.
 
 ## ClickHouse SQL coverage
 
-The coverage below includes the upcoming release's additions. See the
+The coverage below describes version **0.3.0**. See the
 [published release notes](https://github.com/sort-dev/clickhouse-intellij-plugin/releases)
 for the version you are installing.
 
