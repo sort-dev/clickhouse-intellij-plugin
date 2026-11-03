@@ -1,6 +1,7 @@
 package dev.sort.clickhouse
 
 import com.intellij.sql.dialects.clickhouse.CHouseDialect
+import com.intellij.testFramework.IndexingTestUtil
 import dev.brikk.house.sql.intellij.testing.EditorPopupContract
 import dev.brikk.house.sql.intellij.testing.setSqlDialectMapping
 
@@ -10,6 +11,8 @@ class ClickHouseEditorPopupTest : ClickHousePipeTestCase() {
 
     private fun openValidPipeContext() {
         open("SELECT 1 AS id |> WHE<caret>RE id > 0")
+        // PIPE actions are not DumbAware, so check their normal popup state after indexing.
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
     }
 
     fun testRegisteredEditorPopupContexts() {

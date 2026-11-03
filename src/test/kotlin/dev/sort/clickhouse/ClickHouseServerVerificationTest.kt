@@ -174,13 +174,25 @@ class ClickHouseServerVerificationTest : ClickHousePlatformTestCase() {
             setSqlDialectMapping(project, file.virtualFile, language)
             val session = DatabaseSessionManager.openSession(project, source, tag)
             val console = requireNotNull(com.intellij.database.console.JdbcConsoleProvider.attachConsole(project, session, file.virtualFile))
-            val finished = ConcurrentHashMap.newKeySet<DataRequest>()
+            val probe = "${tag}_after"
+            // A late cancellation error must not be attributed to the next request.
+            val probeRequests = ConcurrentHashMap.newKeySet<DataRequest>()
+            val probeFinished = java.util.concurrent.atomic.AtomicBoolean()
+            val probeErrors = CopyOnWriteArrayList<String>()
             val errors = CopyOnWriteArrayList<String>()
             val fetching = java.util.concurrent.atomic.AtomicBoolean()
             DataBus.addRootAuditor(project, object : DataAuditor {
                 override fun fetchStarted(context: DataRequest.Context, resultSetIndex: Int) { fetching.set(true) }
-                override fun error(context: DataRequest.Context, error: ErrorInfo) { errors += error.toString() }
-                override fun requestFinished(context: DataRequest.Context) { finished += context.request }
+                override fun beforeStatement(context: DataRequest.Context) {
+                    if (context.query.orEmpty().contains(probe)) probeRequests += context.request
+                }
+                override fun error(context: DataRequest.Context, error: ErrorInfo) {
+                    errors += error.message
+                    if (context.request in probeRequests) probeErrors += error.message
+                }
+                override fun requestFinished(context: DataRequest.Context) {
+                    if (context.request in probeRequests) probeFinished.set(true)
+                }
             }, testRootDisposable)
             var runningId: String? = null
             fun processId(): String = query("SELECT query_id FROM system.processes WHERE user = '$tag' AND position(query, '$tag') > 0 FORMAT TSVRaw")
@@ -205,7 +217,7 @@ class ClickHouseServerVerificationTest : ClickHousePlatformTestCase() {
                     processId().also { if (it.isNotEmpty()) runningId = it }.isNotEmpty()
                 }, 15)
                 if (streaming) PlatformTestUtil.waitWithEventsDispatching("Native console is fetching the streaming result", { fetching.get() }, 10)
-                assertFalse(session.isIdle)
+                // Server/fetch probes establish activity; an IDE can report idle during an HTTP read.
                 val cancel = requireNotNull(ActionManager.getInstance().getAction("Console.Jdbc.Cancel"))
                 cancel.actionPerformed(event())
                 val started = System.nanoTime()
@@ -220,11 +232,9 @@ class ClickHouseServerVerificationTest : ClickHousePlatformTestCase() {
                     }
                 } else {
                     PlatformTestUtil.waitWithEventsDispatching("Cancelled console becomes idle", { session.isIdle }, 10)
-                    finished.clear()
-                    errors.clear()
-                    execute("SELECT 42 AS cancellation_probe /* ${tag}_after */")
-                    PlatformTestUtil.waitWithEventsDispatching("The same console executes its next request", { finished.isNotEmpty() && session.isIdle }, 10)
-                    assertEmpty(errors)
+                    execute("SELECT 42 AS cancellation_probe /* $probe */")
+                    PlatformTestUtil.waitWithEventsDispatching("The same console executes its next request", { probeFinished.get() && session.isIdle }, 10)
+                    assertEmpty(probeErrors)
                     query("SYSTEM FLUSH LOGS")
                     assertEquals("1", query("SELECT count() FROM system.query_log WHERE user = '$tag' AND type = 'QueryFinish' AND position(query, '${tag}_after') > 0"))
                     assertEquals("1", query("SELECT count() FROM system.query_log WHERE query_id = '${requireNotNull(runningId)}' AND type = 'ExceptionWhileProcessing' AND exception_code = 394"))

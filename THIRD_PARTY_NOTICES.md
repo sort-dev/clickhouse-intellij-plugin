@@ -2,15 +2,15 @@
 
 This plugin embeds the following Apache License 2.0 libraries:
 
-- `dev.brikk.house:brikk-sql-jvm:0.22.0-SNAPSHOT` and
-  `brikk-sql-metadata-jvm:0.22.0-SNAPSHOT`, published via
-  `brikk-sql-metadata:0.22.0-SNAPSHOT`, Copyright Brikk / Sortdev SRL.
+- `dev.brikk.house:brikk-sql-jvm:0.23.0` and
+  `brikk-sql-metadata-jvm:0.23.0`, published via
+  `brikk-sql-metadata:0.23.0`, Copyright Brikk / Sortdev SRL.
   https://github.com/brikk-house/brikk-sql
-- `brikk-sql-intellij-support:0.2.5-SNAPSHOT`, Copyright Brikk / Sortdev SRL.
+- `brikk-sql-intellij-support:0.4.0`, Copyright Brikk / Sortdev SRL.
   https://github.com/brikk/brikk-sql
-- `brikk-sql-verify-api:0.22.0-SNAPSHOT`, Copyright Brikk / Sortdev SRL.
+- `brikk-sql-verify-api:0.23.0`, Copyright Brikk / Sortdev SRL.
   https://github.com/brikk-house/brikk-sql
-- `brikk-sql-verify-clickhouse:0.22.0-SNAPSHOT`, Copyright Brikk / Sortdev SRL.
+- `brikk-sql-verify-clickhouse:0.23.0`, Copyright Brikk / Sortdev SRL.
   https://github.com/brikk-house/brikk-sql
 - `brikk-engine-kotlin-intellij-support:0.3.0`, Copyright Brikk / Sortdev SRL,
   Apache License 2.0, not the Business Source License of its parent repository.
@@ -41,11 +41,12 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-Generated catalogs contain facts from Apache Doris, StarRocks, Trino and
-ClickHouse under Apache-2.0, and DuckDB under MIT. References:
+Generated catalogs contain facts from Apache Doris, StarRocks, Trino,
+ClickHouse, Apache DataFusion and Spice under Apache-2.0, and DuckDB under MIT. References:
 https://github.com/apache/doris, https://github.com/StarRocks/starrocks,
 https://github.com/trinodb/trino, https://github.com/ClickHouse/ClickHouse,
-https://github.com/duckdb/duckdb.
+https://github.com/duckdb/duckdb, https://github.com/apache/datafusion,
+https://github.com/spiceai/spiceai.
 
 StarRocks: Copyright 2021-present, StarRocks Inc.
 Apache Doris: Copyright 2018-2021 The Apache Software Foundation.

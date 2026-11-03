@@ -1,28 +1,25 @@
 # Test fixtures
 
-## Brikk snapshot candidates
+## Shared Brikk libraries
 
-This checkout overrides the vendored catalog with SQL `0.22.0-SNAPSHOT` and
-IntelliJ support `0.2.5-SNAPSHOT`. The shared conventions resolve Brikk snapshots
-from Maven Local. Install the candidates there before building, and compare their
-JAR hashes with the published candidates at
-`https://central.sonatype.com/repository/maven-snapshots/`.
-
-The explicit strict dependency versions prevent stable transitive SQL dependencies
-from replacing the snapshots during conflict resolution. Keep those constraints
-aligned with the catalog overrides in `settings.gradle.kts`.
+This checkout overrides the vendored catalog with released SQL `0.23.0` and
+IntelliJ support `0.4.0`, resolved from Maven Central. Strict dependency versions
+keep SQL core, metadata, verification API and IntelliJ support aligned with the
+overrides in `settings.gradle.kts`.
 
 ```sh
-./gradlew test test262 test263 verifyDistribution verifyBundledSnapshotHashes --refresh-dependencies
+./gradlew test test262 test263 verifyDistribution --refresh-dependencies
 ./gradlew test test262 test263 -Ptest.kotlin=absent
 ./gradlew verifyPlugin
 ```
 
-`verifyBundledSnapshotHashes` compares the actual plugin ZIP with Maven Local.
-Snapshot builds are for testing only; the release guard rejects them. Replace the
-candidate versions with the verified stable release and update the third-party
-notices before releasing. Remove the overrides only after the shared catalog pins
-that release. Do not modify the vendored build conventions or their catalog.
+When testing snapshot candidates, the shared conventions resolve them only from
+Maven Local. `verifyBundledSnapshotHashes` compares those JARs with the actual
+plugin ZIP; it does not check released libraries. Snapshot builds are for testing
+only, and the release guard rejects them. Keep the third-party notices aligned
+with the resolved versions. Remove catalog overrides only after the shared catalog
+pins the intended release. Do not modify the vendored build conventions or their
+catalog.
 
 ## Live ClickHouse server verification
 
@@ -40,6 +37,13 @@ export BRIKK_CLICKHOUSE_CONTAINER=brikk-ch-verify
 ./gradlew test --tests ClickHouseServerVerificationTest
 ../path/to/tools/clickhouse-verify-server.sh down
 ```
+
+Cancellation and console-recovery coverage is tested with JDBC `0.10.0`. To use it
+instead of the default `0.9.8` fixture, download `clickhouse-jdbc-0.10.0-all.jar`
+beside the fetched `slf4j-api-2.0.7.jar` and set `BRIKK_CLICKHOUSE_DRIVER` to its
+absolute path. Neither driver is bundled in the plugin. The cancellation test checks
+the server's query log and the next query's own completion/errors, not the IDE's
+busy flag or a late cancellation event from the previous request.
 
 Known limitation: with the 0.9.8 JDBC driver, `readonly=1` logins can yield
 `Unavailable` because the driver sends settings the server forbids; an unavailable

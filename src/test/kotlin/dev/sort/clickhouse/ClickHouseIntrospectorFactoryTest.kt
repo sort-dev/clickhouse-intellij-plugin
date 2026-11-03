@@ -105,7 +105,9 @@ class ClickHouseIntrospectorFactoryTest : BasePlatformTestCase() {
         (view as com.intellij.openapi.Disposable).dispose()
         assertEquals(1, disposed)
         // A pre-263 connection that is not Disposable is never disposed through the view.
-        (ClickHouseIntrospector.clickHouseView(aliasConnection()) as com.intellij.openapi.Disposable).dispose()
+        if (!com.intellij.openapi.Disposable::class.java.isAssignableFrom(DatabaseConnectionCore::class.java)) {
+            (ClickHouseIntrospector.clickHouseView(aliasConnection()) as com.intellij.openapi.Disposable).dispose()
+        }
     }
 
     private fun aliasConnection(): DatabaseConnectionCore = Proxy.newProxyInstance(

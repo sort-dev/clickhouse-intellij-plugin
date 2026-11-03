@@ -21,7 +21,7 @@ sqlDialectPlugin {
 }
 
 dependencies {
-    // Keep the candidates aligned even when transitive dependencies request stable SQL.
+    // Keep SQL and IntelliJ support aligned with the catalog overrides.
     implementation(libs.brikk.sql.jvm) {
         version { strictly(libs.versions.brikk.sql.core.get()) }
     }
