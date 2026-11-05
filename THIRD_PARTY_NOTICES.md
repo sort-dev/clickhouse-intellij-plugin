@@ -6,7 +6,7 @@ This plugin embeds the following Apache License 2.0 libraries:
   `brikk-sql-metadata-jvm:0.23.0`, published via
   `brikk-sql-metadata:0.23.0`, Copyright Brikk / Sortdev SRL.
   https://github.com/brikk-house/brikk-sql
-- `brikk-sql-intellij-support:0.4.0`, Copyright Brikk / Sortdev SRL.
+- `brikk-sql-intellij-support:0.4.1`, Copyright Brikk / Sortdev SRL.
   https://github.com/brikk/brikk-sql
 - `brikk-sql-verify-api:0.23.0`, Copyright Brikk / Sortdev SRL.
   https://github.com/brikk-house/brikk-sql

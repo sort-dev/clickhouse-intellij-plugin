@@ -3,7 +3,7 @@
 ## Shared Brikk libraries
 
 This checkout overrides the vendored catalog with released SQL `0.23.0` and
-IntelliJ support `0.4.0`, resolved from Maven Central. Strict dependency versions
+IntelliJ support `0.4.1`, resolved from Maven Central. Strict dependency versions
 keep SQL core, metadata, verification API and IntelliJ support aligned with the
 overrides in `settings.gradle.kts`.
 
