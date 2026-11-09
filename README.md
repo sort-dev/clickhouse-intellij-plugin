@@ -1,33 +1,43 @@
-# ClickHouse support for DataGrip & IntelliJ IDEA
+# ClickHouse SQL for DataGrip and IntelliJ IDEA
 
-A plugin that adds a fuller [ClickHouse](https://clickhouse.com) SQL dialect to DataGrip and
-IntelliJ IDEA Ultimate. It checks your SQL with your ClickHouse server's own parser and completes
-the functions your server actually has.
+An extended [ClickHouse](https://clickhouse.com) SQL dialect for DataGrip and IntelliJ IDEA
+Ultimate. It adds local parsing for ClickHouse syntax the IDE's built-in dialect misses, parse-only
+checks against a connected server, and function completion matched to the server's version.
+
+Server-side checks use the server's parser through `formatQuery` on **ClickHouse 23.10 or later**.
+The statement is passed as text and parsed, not executed. Local checks remain available when the
+server is disconnected or cannot perform the check.
+
+Optional PIPE syntax is built in. Before execution, the plugin converts a pipeline into ordinary
+ClickHouse SQL. It parses the PIPE input and refuses unsupported or lossy conversions, but does not
+separately validate the generated SQL with ClickHouse before sending it.
 
 > [!IMPORTANT]
 > **Not affiliated with ClickHouse.** This is an independent plugin by Sortdev SRL. It is not
 > developed, endorsed or sponsored by ClickHouse, Inc. "ClickHouse" is a registered trademark of
 > ClickHouse, Inc., used here only to name the database this plugin works with.
 
-## Why
+## Why extend the built-in dialect?
 
-The IDE's built-in ClickHouse dialect misses a lot of ClickHouse syntax and shows false errors for
-valid SQL. This plugin parses more of it, checks your SQL against your own server, and keeps
+The IDE's built-in ClickHouse dialect misses valid ClickHouse syntax and can show false errors.
+This plugin extends that dialect with additional grammar and server-assisted checking, and keeps
 completion in line with the ClickHouse version you run. The database tree, DDL and object sources
 still come from the IDE's built-in ClickHouse support.
 
 ## Features
 
-- **Checked by your ClickHouse server.** While connected, the server's own parser checks your SQL.
-  Your statement is parsed, not executed, and checking it does not read your tables. When the
-  server accepts a statement, local false errors go away.
+- **Checked by your ClickHouse server.** On ClickHouse 23.10 or later, eligible ordinary SQL
+  statements are checked with the server's own parser while connected. Your statement is parsed,
+  not executed, and checking it does not read your tables. When the server accepts a statement,
+  local false errors go away. Local checks remain active if the server is disconnected or the check
+  is unavailable.
 - **More ClickHouse syntax** than the built-in dialect: table functions in `FROM`, `JOIN`,
   `DESCRIBE` and `INSERT`, `EXISTS` and `ALL`/`ANY` predicates, `INSERT INTO FUNCTION` exports, and
   raw `FORMAT` data. See [SQL coverage](#clickhouse-sql-coverage) for supported forms and limits.
 - **Completion from your server.** Function names come from the connected server's system catalog,
   merged with the plugin's bundled function list, so completion and docs match your version.
-- **ClickHouse PIPE (optional).** Write pipe-syntax queries and run them on ClickHouse. See
-  [ClickHouse PIPE](#clickhouse-pipe).
+- **Optional ClickHouse PIPE.** Write pipe-syntax queries and convert them to ordinary ClickHouse
+  SQL before execution. See [ClickHouse PIPE](#clickhouse-pipe).
 
 ## ClickHouse SQL coverage
 
@@ -80,6 +90,8 @@ acceptance is implied.
 ## Requirements
 
 - DataGrip or IntelliJ IDEA Ultimate, **2026.1 to 2026.3**.
+- ClickHouse **23.10 or later** for server-side syntax checks. Other editing features do not require
+  `formatQuery`; individual SQL features still depend on your server version and settings.
 
 ## Install
 
@@ -100,8 +112,8 @@ Download the zip from the
 ## ClickHouse PIPE
 
 Write queries in [pipe syntax](https://cloud.google.com/bigquery/docs/pipe-syntax-guide) and run
-them on ClickHouse. When you run one, the plugin converts it to plain ClickHouse SQL and sends that
-to the server.
+them on ClickHouse. Before execution, the plugin converts the pipeline to plain ClickHouse SQL and
+sends that to the server.
 
 **Turn it on** in **Settings → Tools → Database → ClickHouse PIPE**. It's off by default.
 
@@ -113,8 +125,9 @@ What you get:
 - Stage completion includes supported ClickHouse joins, including `NATURAL JOIN`.
 
 PIPE is built into this plugin and does not require SQL Transpiler. It is editor syntax converted
-to ordinary SQL, not a server-side ClickHouse extension. Unsupported stages and translations
-reported as lossy are refused rather than sent to the server.
+to ordinary SQL, not a server-side ClickHouse extension. The plugin parses the PIPE input and
+refuses unsupported stages and translations reported as lossy rather than sending them to the
+server. The generated SQL is not separately validated with ClickHouse before execution.
 
 ## Notes
 
@@ -130,7 +143,8 @@ reported as lossy are refused rather than sent to the server.
 - [Trino SQL](https://plugins.jetbrains.com/plugin/33124-sql-dialect-for-trino) dialect for
   JetBrains IDEs.
 - [SQL Transpiler](https://plugins.jetbrains.com/plugin/32900-sql-transpiler) converts SQL between
-  dialects in JetBrains IDEs.
+  different database dialects in JetBrains IDEs. It is separate from this plugin's built-in PIPE
+  support.
 - [Trino Doris connector](https://github.com/brikk/trino-doris-connector) lets Trino query Doris.
 - [Trino DuckLake catalog](https://github.com/brikk/ducklake-integrations/tree/main/jvm/trino-ducklake)
   with read and write support.
@@ -140,7 +154,7 @@ reported as lossy are refused rather than sent to the server.
 
 Found a bug or SQL the plugin gets wrong?
 [Open an issue](https://github.com/sort-dev/clickhouse-intellij-plugin/issues). A small, anonymized
-SQL sample helps a lot. Want to build or change the plugin? See [CONTRIBUTING.md](CONTRIBUTING.md).
+SQL sample helps a lot.
 
 ## License
 

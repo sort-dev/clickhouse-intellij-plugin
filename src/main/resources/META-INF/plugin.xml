@@ -3,15 +3,24 @@
     <name>SQL Dialect for ClickHouse</name>
     <vendor url="https://sort.dev" email="jayson@sort.dev">Sortdev SRL</vendor>
     <description><![CDATA[
-        <p>A fuller <b>ClickHouse SQL dialect</b> for DataGrip and IntelliJ IDEA Ultimate. Your SQL is
-        checked by your own ClickHouse server's parser, and completion follows the functions your
-        server actually has. Compatible with the 2026.1 through 2026.3 IDE lines.</p>
+        <p>An extended <b>ClickHouse SQL dialect</b> for DataGrip and IntelliJ IDEA Ultimate. It adds
+        local parsing for syntax the built-in dialect misses, parse-only checks against a connected
+        server, and version-aware function completion. Server-side checks use the server parser
+        through <code>formatQuery</code> on <b>ClickHouse 23.10 or later</b>; the statement is parsed
+        as text, not executed.</p>
+
+        <p>Optional PIPE syntax is built in. Before execution, the plugin converts a pipeline into
+        ordinary ClickHouse SQL. It parses the PIPE input and refuses unsupported or lossy conversions,
+        but does not separately validate the generated SQL with ClickHouse before sending it.</p>
+
+        <p>Compatible with the 2026.1 through 2026.3 IDE lines.</p>
 
         <ul>
-            <li><b>Checked by your ClickHouse server.</b> While your data source is connected, the
-                server's own parser checks each statement. Your statement is parsed, not executed,
-                and checking it does not read your tables. When the server accepts a statement,
-                local false errors go away. Local checks still apply when the server is unreachable</li>
+            <li><b>Checked by your ClickHouse server.</b> On ClickHouse 23.10 or later, eligible
+                ordinary SQL statements are checked with the server's own parser while connected.
+                Your statement is parsed, not executed, and checking it does not read your tables.
+                When the server accepts a statement, local false errors go away. Local checks remain
+                active if the server is disconnected or the check is unavailable</li>
             <li><b>More ClickHouse syntax than the built-in dialect.</b> Table functions in
                 <code>FROM</code>, <code>JOIN</code>, <code>DESCRIBE</code> and <code>INSERT</code>,
                 <code>EXISTS</code> and <code>ALL</code>/<code>ANY</code> predicates,
@@ -26,21 +35,22 @@
                 unrelated table names</li>
             <li><b>Automatic targeted introspection.</b> Reference a schema that hasn't been
                 introspected yet and the plugin introspects just that schema in the background</li>
-            <li><b>ClickHouse PIPE (optional).</b> Write <code>FROM t |&gt; WHERE ... |&gt; SELECT ...</code>
-                and run it as ClickHouse SQL, with stage completion, generated-SQL preview and
-                run-to-stage. Enable it under <b>Settings &rarr; Tools &rarr; Database &rarr; ClickHouse PIPE</b>.
-                Disabled by default; no SQL Transpiler plugin installation is required</li>
+            <li><b>PIPE editing tools.</b> Write <code>FROM t |&gt; WHERE ... |&gt; SELECT ...</code>
+                with stage completion, generated-SQL preview and run-to-stage. Enable PIPE under
+                <b>Settings &rarr; Tools &rarr; Database &rarr; ClickHouse PIPE</b>. It is disabled
+                by default, and no SQL Transpiler plugin installation is required</li>
             <li>Ready-to-use <b>ClickHouse (sort.dev)</b> data source on ClickHouse's official JDBC
                 driver (default HTTP port 8123), which selects the dialect for its consoles
                 automatically. The database tree, DDL and object sources come from the IDE's
                 built-in ClickHouse support</li>
         </ul>
 
-        <p>Bundled function catalogs cover ClickHouse 26.10 stable, 26.8 LTS and historical 26.5;
-        connected-server completion follows the server's function inventory. Syntax coverage is
-        broad, not complete: some authorization and <code>EXPLAIN</code> forms remain partial,
-        and newer features still need the appropriate server version and settings. DDL parsing
-        is editor assistance, not a guarantee of successful execution. Server parser acceptance
+        <p>Bundled function catalogs cover ClickHouse <b>26.10.2.103 stable</b>,
+        <b>26.8.34.13 LTS</b> and historical <b>26.5.1.1</b>; connected-server completion follows
+        the server's function inventory. These are catalog baselines, not the only usable server
+        releases. Syntax coverage is broad, not complete: some authorization and <code>EXPLAIN</code>
+        forms remain partial, and newer features still need the appropriate server version and settings.
+        DDL parsing is editor assistance, not a guarantee of successful execution. Server parser acceptance
         does not prove names, types, permissions or query results are correct.</p>
 
         <p><i>This is an independent, community plugin developed by Sortdev SRL. It is not affiliated
