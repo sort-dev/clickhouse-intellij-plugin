@@ -61,6 +61,18 @@
         <a href="https://github.com/sort-dev/clickhouse-intellij-plugin">github.com/sort-dev/clickhouse-intellij-plugin</a></p>
     ]]></description>
     <change-notes><![CDATA[
+        <h3>0.4.0</h3>
+        <ul>
+            <li>Use Brikk SQL 1.0.1 and IntelliJ support 1.0.1, bringing the bundled SQL engine up to
+                SQLGlot 30.29: new syntax nodes, nested <code>XOR</code>, <code>SHA384</code>/<code>SHA512</code>
+                handling and operator-precedence corrections. Parsing, error highlighting and PIPE results
+                for ClickHouse SQL are unchanged in our tests; the MySQL, Doris and DuckDB fixes in that
+                release do not affect ClickHouse files.</li>
+            <li>Server checks of statements with IDE bind parameters, and the <code>EXISTS</code>/<code>ALL</code>
+                subquery check, now skip any SQL the engine rejects instead of letting an unexpected
+                engine error escape.</li>
+            <li>Compatible with the 2026.1 through 2026.3 IDE lines.</li>
+        </ul>
         <h3>0.3.1</h3>
         <ul>
             <li>Fix live function-catalog refresh races: older reads cannot replace newer accepted
