@@ -11,11 +11,10 @@ import com.intellij.sql.psi.SqlReference
 import com.intellij.sql.psi.SqlReferenceExpression
 import com.intellij.sql.psi.SqlScopeProcessor
 import com.intellij.sql.psi.impl.SqlResolveExtension
+import dev.brikk.house.sql.BrikkSqlError
 import dev.brikk.house.sql.metadata.FunctionKind
 import dev.brikk.house.sql.ast.Query
 import dev.brikk.house.sql.dialects.Dialects
-import dev.brikk.house.sql.parser.ParseError
-import dev.brikk.house.sql.parser.TokenError
 import dev.sort.clickhouse.ClickHouseDbms
 import java.util.concurrent.ConcurrentHashMap
 
@@ -66,9 +65,7 @@ class ClickHouseScalarFunctionResolveExtension : SqlResolveExtension {
         val arguments = call.parameterList ?: return null
         val query = try {
             Dialects.forName("clickhouse").parse(arguments.text).singleOrNull() is Query
-        } catch (_: ParseError) {
-            false
-        } catch (_: TokenError) {
+        } catch (_: BrikkSqlError) {
             false
         }
         return keyword.takeIf { query }

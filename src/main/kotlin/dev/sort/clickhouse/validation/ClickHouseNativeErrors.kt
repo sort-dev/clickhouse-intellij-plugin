@@ -3,9 +3,9 @@ package dev.sort.clickhouse.validation
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiFile
 import com.intellij.lang.Language
+import dev.brikk.house.sql.BrikkSqlError
 import dev.brikk.house.sql.diagnostics.localParseDiagnostics
 import dev.brikk.house.sql.dialects.Dialects
-import dev.brikk.house.sql.generator.UnsupportedError
 import dev.brikk.house.sql.intellij.catalog.DialectDataSourceResolver
 import dev.brikk.house.sql.intellij.diagnostics.DataSourceVerification
 import dev.brikk.house.sql.intellij.diagnostics.NativeErrorAnnotator
@@ -13,11 +13,8 @@ import dev.brikk.house.sql.intellij.diagnostics.NativeErrorProfile
 import dev.brikk.house.sql.intellij.diagnostics.NativeErrorPsiFilter
 import dev.brikk.house.sql.intellij.diagnostics.VerificationConnectionListener
 import dev.brikk.house.sql.intellij.pipe.isEnabled
-import dev.brikk.house.sql.parser.ParseError
 import dev.brikk.house.sql.parser.SqlStatementRange
-import dev.brikk.house.sql.parser.TokenError
 import dev.brikk.house.sql.shape.ParamStyle
-import dev.brikk.house.sql.shape.ShapeError
 import dev.brikk.house.sql.shape.SqlScriptParameters
 import dev.brikk.house.sql.verify.ClickhouseQueryConnection
 import dev.brikk.house.sql.verify.ParseOnlyClickhouseVerifier
@@ -84,13 +81,7 @@ internal fun maskClickHouseIdeBinds(sql: String): String? {
     return try {
         Dialects.forName("clickhouse").parse(masked)
         masked
-    } catch (_: ParseError) {
-        null
-    } catch (_: TokenError) {
-        null
-    } catch (_: ShapeError) {
-        null
-    } catch (_: UnsupportedError) {
+    } catch (_: BrikkSqlError) {
         null
     }
 }

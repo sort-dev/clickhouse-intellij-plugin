@@ -47,4 +47,11 @@ class ClickHouseVerificationTextTest : TestCase() {
             assertNull("$sql -> $masked", masked)
         }
     }
+
+    fun testJsonSubcolumnCastIsMaskedAndMalformedTextReturnsNull() {
+        assertEquals("SELECT j.a.:Int64, 0 FROM t", maskClickHouseIdeBinds("SELECT j.a.:Int64, ? FROM t"))
+        for (sql in listOf("SELECT ?, 'unterminated", "SELECT (((?", "SELECT ? FROM t WHERE x IN (")) {
+            assertNull(sql, maskClickHouseIdeBinds(sql))
+        }
+    }
 }
