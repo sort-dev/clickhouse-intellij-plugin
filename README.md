@@ -142,6 +142,8 @@ server. The generated SQL is not separately validated with ClickHouse before exe
   dialect for JetBrains IDEs, for embedded DuckDB and Quack servers.
 - [Trino SQL](https://plugins.jetbrains.com/plugin/33124-sql-dialect-for-trino) dialect for
   JetBrains IDEs.
+- [DataFusion and Spice.ai SQL](https://github.com/sort-dev/datafusion-spice-intellij-plugin)
+  dialect for JetBrains IDEs.
 - [SQL Transpiler](https://plugins.jetbrains.com/plugin/32900-sql-transpiler) converts SQL between
   different database dialects in JetBrains IDEs. It is separate from this plugin's built-in PIPE
   support.
