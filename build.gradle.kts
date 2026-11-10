@@ -62,7 +62,7 @@ tasks.withType<Test>().configureEach {
     if (realSqlDirectory == null) {
         exclude("**/RealSqlScanTest.class")
     } else {
-        include("**/RealSqlScanTest.class")
+        filter.includeTestsMatching("*.RealSqlScanTest")
         systemProperty("realSql.dir", file(realSqlDirectory).absolutePath)
         providers.gradleProperty("realSql.probes").orNull?.let { systemProperty("realSql.probes", file(it).absolutePath) }
         val privateDirectory = layout.buildDirectory.dir("realsql").get().asFile

@@ -13,7 +13,7 @@
         ordinary ClickHouse SQL. It parses the PIPE input and refuses unsupported or lossy conversions,
         but does not separately validate the generated SQL with ClickHouse before sending it.</p>
 
-        <p>Compatible with the 2026.1 through 2026.3 IDE lines.</p>
+        <p>Compatible with the 2026.2 and 2026.3 IDE lines.</p>
 
         <ul>
             <li><b>Checked by your ClickHouse server.</b> On ClickHouse 23.10 or later, eligible
@@ -61,6 +61,11 @@
         <a href="https://github.com/sort-dev/clickhouse-intellij-plugin">github.com/sort-dev/clickhouse-intellij-plugin</a></p>
     ]]></description>
     <change-notes><![CDATA[
+        <h3>Unreleased</h3>
+        <ul>
+            <li>Requires the 2026.2 IDE line or later (2026.2 and 2026.3) and runs on the IDE's Java 25;
+                2026.1 is no longer supported.</li>
+        </ul>
         <h3>0.4.0</h3>
         <ul>
             <li>Use Brikk SQL 1.0.1 and IntelliJ support 1.0.1, bringing the bundled SQL engine up to

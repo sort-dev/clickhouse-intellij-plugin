@@ -2,6 +2,9 @@
 
 ## Build
 
+The build and the test IDEs run on JDK 25, which IDE line 2026.2 requires. Without
+a JDK 25 on `PATH`, prefix Gradle commands with `mise exec java@25 --`.
+
 ```sh
 ./gradlew buildPlugin
 ```
@@ -19,7 +22,7 @@ first. Keep scratch files under `build/`.
 
 ## Test
 
-Tests run against real IDE platforms (builds 261, 262, 263):
+Tests run against real IDE platforms (builds 262, 263):
 
 ```sh
 ./gradlew test                          # default lane
@@ -35,7 +38,7 @@ documented in [dev-docs/testing.md](dev-docs/testing.md).
 1. Set the release version in `build.gradle.kts` and update the change-notes in
    `src/main/resources/META-INF/plugin.xml`. Commit to `main`.
 2. Create `release/<version>` from that commit and push it. The release workflow
-   rejects commits not on `main`, builds on JDK 21, verifies the plugin against
+   rejects commits not on `main`, builds on JDK 25, verifies the plugin against
    IntelliJ 262/263, validates the ZIP and creates the GitHub release.
 3. JetBrains Marketplace upload is a separate, owner-only step:
    `./gradlew publishPlugin -Prelease=true`.

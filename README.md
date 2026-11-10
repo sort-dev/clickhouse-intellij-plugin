@@ -89,7 +89,7 @@ acceptance is implied.
 
 ## Requirements
 
-- DataGrip or IntelliJ IDEA Ultimate, **2026.1 to 2026.3**.
+- DataGrip or IntelliJ IDEA Ultimate, **2026.2 to 2026.3**.
 - ClickHouse **23.10 or later** for server-side syntax checks. Other editing features do not require
   `formatQuery`; individual SQL features still depend on your server version and settings.
 
